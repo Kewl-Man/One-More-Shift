@@ -1,0 +1,7 @@
+{
+  "name": "One More Shift",
+  "description": "A 3D indie horror simulation game. Work the overnight shift at a strange convenience store, serve bizarre customers, follow unsettling rules, and survive the night.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

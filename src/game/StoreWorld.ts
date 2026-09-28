@@ -1,25 +1,23 @@
 import * as THREE from 'three';
+import { sound } from '../audio/SoundManager';
 
-// Helper to generate dynamic procedural canvas textures
+// Procedural texture generators
 export function createTileTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext('2d')!;
 
-  // Grimy yellowish-gray convenience store linoleum tile
   ctx.fillStyle = '#b8b4a6';
   ctx.fillRect(0, 0, 512, 512);
 
-  // Tile grid (64x64 squares)
   const tileSize = 64;
   for (let y = 0; y < 512; y += tileSize) {
     for (let x = 0; x < 512; x += tileSize) {
-      const isAlt = ((x / tileSize) + (y / tileSize)) % 2 === 0;
+      const isAlt = (x / tileSize + y / tileSize) % 2 === 0;
       ctx.fillStyle = isAlt ? '#c2beb0' : '#ada899';
       ctx.fillRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
 
-      // Subtle grime/scuffs
       if (Math.random() > 0.4) {
         ctx.fillStyle = 'rgba(70, 60, 50, 0.08)';
         ctx.fillRect(x + 4 + Math.random() * 20, y + 4 + Math.random() * 20, 15, 8);
@@ -27,7 +25,6 @@ export function createTileTexture(): THREE.CanvasTexture {
     }
   }
 
-  // Grout lines
   ctx.strokeStyle = '#5a554a';
   ctx.lineWidth = 2;
   for (let i = 0; i <= 512; i += tileSize) {
@@ -45,7 +42,7 @@ export function createTileTexture(): THREE.CanvasTexture {
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(8, 12);
+  texture.repeat.set(8, 10);
   return texture;
 }
 
@@ -58,7 +55,6 @@ export function createCeilingTexture(): THREE.CanvasTexture {
   ctx.fillStyle = '#dcdad1';
   ctx.fillRect(0, 0, 256, 256);
 
-  // Perforated acoustic dots
   ctx.fillStyle = 'rgba(60, 60, 60, 0.25)';
   for (let y = 8; y < 256; y += 12) {
     for (let x = 8; x < 256; x += 12) {
@@ -68,7 +64,6 @@ export function createCeilingTexture(): THREE.CanvasTexture {
     }
   }
 
-  // Metal grid frame
   ctx.strokeStyle = '#8a8880';
   ctx.lineWidth = 4;
   ctx.strokeRect(0, 0, 256, 256);
@@ -76,38 +71,8 @@ export function createCeilingTexture(): THREE.CanvasTexture {
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(8, 12);
+  texture.repeat.set(8, 10);
   return texture;
-}
-
-export function createBoxTexture(label: string): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
-
-  ctx.fillStyle = '#b58a55'; // Cardboard brown
-  ctx.fillRect(0, 0, 256, 256);
-
-  // Tape strip across
-  ctx.fillStyle = '#a87944';
-  ctx.fillRect(0, 110, 256, 36);
-
-  // Text label
-  ctx.fillStyle = '#222';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText('K&M MART SUPPLY', 20, 50);
-  ctx.font = '14px monospace';
-  ctx.fillText(label, 20, 80);
-  ctx.fillText('FRAGILE // RETAIL USE', 20, 190);
-
-  // Barcode
-  ctx.fillStyle = '#111';
-  for (let i = 20; i < 180; i += 4 + Math.random() * 4) {
-    ctx.fillRect(i, 210, 2 + (Math.random() > 0.5 ? 2 : 0), 30);
-  }
-
-  return new THREE.CanvasTexture(canvas);
 }
 
 export function createSignTexture(text: string, sub: string, bgColor = '#1e3a5f', textColor = '#ffffff'): THREE.CanvasTexture {
@@ -135,13 +100,197 @@ export function createSignTexture(text: string, sub: string, bgColor = '#1e3a5f'
   return new THREE.CanvasTexture(canvas);
 }
 
+export function createEmergencyDoorSignTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  // Red background with dark border
+  ctx.fillStyle = '#b91c1c';
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Diagonal yellow/black hazard stripe top and bottom
+  const stripeW = 24;
+  for (let x = -stripeW; x < 512 + stripeW; x += stripeW * 2) {
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + stripeW, 0);
+    ctx.lineTo(x + stripeW - 20, 24);
+    ctx.lineTo(x - 20, 24);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(x, 232);
+    ctx.lineTo(x + stripeW, 232);
+    ctx.lineTo(x + stripeW - 20, 256);
+    ctx.lineTo(x - 20, 256);
+    ctx.fill();
+  }
+
+  // Inner white box
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(16, 32, 480, 192);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 38px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('EMERGENCY EXIT ONLY', 256, 95);
+
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 24px monospace';
+  ctx.fillText('ALARM WILL SOUND', 256, 145);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '18px monospace';
+  ctx.fillText('PUSH CRASH BAR TO OPEN', 256, 185);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+export function createDarkAlleyTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Very dark damp pavement
+  ctx.fillStyle = '#0f1114';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Gritty noise and oil stains
+  for (let i = 0; i < 9000; i++) {
+    const v = Math.floor(10 + Math.random() * 25);
+    ctx.fillStyle = `rgb(${v},${v + 2},${v + 4})`;
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+  }
+
+  // Cracks and moisture puddles (NO yellow parking lines!)
+  ctx.strokeStyle = '#050608';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    let cx = Math.random() * 512;
+    let cy = Math.random() * 512;
+    ctx.moveTo(cx, cy);
+    for (let j = 0; j < 5; j++) {
+      cx += (Math.random() - 0.5) * 80;
+      cy += (Math.random() - 0.5) * 80;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 6);
+  return texture;
+}
+
+export function createBrickTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#3a2018';
+  ctx.fillRect(0, 0, 256, 256);
+
+  const brickH = 24;
+  const brickW = 48;
+  for (let y = 0; y < 256; y += brickH) {
+    const isShifted = (y / brickH) % 2 === 1;
+    const startX = isShifted ? -brickW / 2 : 0;
+    for (let x = startX; x < 256 + brickW; x += brickW) {
+      const shade = Math.floor(40 + Math.random() * 25);
+      ctx.fillStyle = `rgb(${shade + 30}, ${shade - 10}, ${shade - 15})`;
+      ctx.fillRect(x + 2, y + 2, brickW - 4, brickH - 4);
+    }
+  }
+
+  ctx.strokeStyle = '#181818';
+  ctx.lineWidth = 2;
+  for (let y = 0; y <= 256; y += brickH) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(256, y);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 4);
+  return texture;
+}
+
+export function createConveyorBeltTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#121417';
+  ctx.fillRect(0, 0, 256, 256);
+
+  const ribCount = 16;
+  const ribHeight = 256 / ribCount;
+  for (let i = 0; i < ribCount; i++) {
+    const y = i * ribHeight;
+    ctx.fillStyle = '#262a30';
+    ctx.fillRect(0, y, 256, ribHeight * 0.45);
+
+    ctx.fillStyle = '#0a0b0d';
+    ctx.fillRect(0, y + ribHeight * 0.45, 256, ribHeight * 0.55);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(0, y + 1, 256, 1);
+  }
+
+  ctx.fillStyle = '#343840';
+  ctx.fillRect(0, 0, 10, 256);
+  ctx.fillRect(246, 0, 10, 256);
+
+  ctx.fillStyle = '#ffaa00';
+  for (let y = 8; y < 256; y += 32) {
+    ctx.fillRect(10, y, 4, 16);
+    ctx.fillRect(242, y, 4, 16);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 6);
+  return texture;
+}
+
 export interface InteractiveObject {
   id: string;
   name: string;
   prompt: string;
   mesh: THREE.Object3D;
   position: THREE.Vector3;
-  type: string;
+  type?: 'register' | 'door' | 'telephone' | 'cctv' | 'breaker' | 'counter_item' | 'optical_scanner' | 'back_door';
+}
+
+export interface CCTVCameraDef {
+  id: number;
+  name: string;
+  locationName: string;
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+  fov: number;
+}
+
+interface LightDampeningState {
+  lightIndex: number;
+  duration: number;
+  remaining: number;
+  targetFactor: number;
+  flickerSpeed: number;
 }
 
 export class StoreWorld {
@@ -149,14 +298,91 @@ export class StoreWorld {
   public collisionBoxes: THREE.Box3[] = [];
   public interactives: InteractiveObject[] = [];
   public lights: THREE.PointLight[] = [];
-  public emergencyLight: THREE.PointLight | null = null;
-  public emergencyMesh: THREE.Mesh | null = null;
-  public rainParticles: THREE.Points | null = null;
-  public coolerDoors: THREE.Mesh[] = [];
-
-  // Store dimensions: width X (-12 to +12), depth Z (-18 to +14), height Y (0 to 4.2)
   public isBlackout = false;
-  public flickerTimer = 0;
+  private flickerTimer = 0;
+  private activeLightDampeners: LightDampeningState[] = [];
+
+  // Door states
+  public isFrontDoorLocked = false;
+  public isBackDoorOpen = false;
+  public backDoorMesh: THREE.Group | null = null;
+  public doorCollisionBox: THREE.Box3 | null = null;
+
+  // Checkout conveyor & scanner
+  public conveyorBeltMesh: THREE.Mesh | null = null;
+  public conveyorTexture: THREE.CanvasTexture | null = null;
+  public scannerLaserMesh: THREE.Mesh | null = null;
+  public scannerLight: THREE.PointLight | null = null;
+  private isConveyorMoving = false;
+  private scannerPulseTimer = 0;
+
+  // Rain & Exterior
+  private rainParticles: THREE.Points | null = null;
+  private stormFlashTimer = 0;
+  private stormLight: THREE.DirectionalLight | null = null;
+
+  // Spark particles & lights for broken breaker
+  private sparkParticles: THREE.Points | null = null;
+  public breakerSparkLight: THREE.PointLight | null = null;
+  public breakerInteractiveObj: InteractiveObject | null = null;
+
+  // Physical CCTV camera mesh groups
+  public cctvMeshes: THREE.Group[] = [];
+
+  // CCTV definitions (high vantage angles with clear sightlines, no obstructions)
+  public cctvDefs: CCTVCameraDef[] = [
+    {
+      id: 1,
+      name: 'CAM-01',
+      locationName: 'FRONT PARKING LOT & ROUTE 9',
+      position: new THREE.Vector3(0, 5.2, 17.5),
+      target: new THREE.Vector3(0, 1.2, 38.0),
+      fov: 74,
+    },
+    {
+      id: 2,
+      name: 'CAM-02',
+      locationName: 'CHECKOUT CONVEYOR & REGISTER',
+      position: new THREE.Vector3(-6.2, 3.6, 12.8),
+      target: new THREE.Vector3(-8.8, 1.1, 9.8),
+      fov: 68,
+    },
+    {
+      id: 3,
+      name: 'CAM-03',
+      locationName: 'AISLE 1 & 2 (MAIN GROCERY)',
+      // Shelves sit at x = -4.5 and x = 0.5 (each 1.6 wide), so the walkway between them is
+      // centered around x = -2.0. The old x = 0.0 position sat INSIDE the x = 0.5 shelf's
+      // footprint, which blocked this camera's own sightline partway down the aisle.
+      position: new THREE.Vector3(-2.0, 3.6, 10.5),
+      target: new THREE.Vector3(-2.0, 1.0, -10.0),
+      fov: 70,
+    },
+    {
+      id: 4,
+      name: 'CAM-04',
+      locationName: 'AISLE 6 (FAR RIGHT BLIND SPOT)',
+      position: new THREE.Vector3(8.5, 3.6, 10.5),
+      target: new THREE.Vector3(8.5, 1.0, -10.0),
+      fov: 70,
+    },
+    {
+      id: 5,
+      name: 'CAM-05',
+      locationName: 'BACK STORAGE ROOM & DESK',
+      position: new THREE.Vector3(4.5, 3.6, -13.5),
+      target: new THREE.Vector3(-3.0, 1.2, -18.2),
+      fov: 70,
+    },
+    {
+      id: 6,
+      name: 'CAM-06',
+      locationName: 'REAR DARK ALLEY & BREAKER',
+      position: new THREE.Vector3(0.0, 3.6, -20.2),
+      target: new THREE.Vector3(9.5, 1.6, -28.5),
+      fov: 74,
+    },
+  ];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -167,7 +393,7 @@ export class StoreWorld {
     const tileTex = createTileTexture();
     const ceilTex = createCeilingTexture();
 
-    // 1. Floor
+    // 1. Store Floor (Z: -19 to 15, X: -13 to 13)
     const floorGeo = new THREE.PlaneGeometry(26, 34);
     const floorMat = new THREE.MeshStandardMaterial({
       map: tileTex,
@@ -191,17 +417,11 @@ export class StoreWorld {
     ceil.position.set(0, 4.2, -2);
     this.scene.add(ceil);
 
-    // 3. Walls (Back, Left, Right, Front glass)
+    // 3. Perimeter Interior Walls
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0x909497,
       roughness: 0.85,
     });
-
-    // Back Wall (Storage & Restroom divider)
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(26, 4.2, 0.4), wallMat);
-    backWall.position.set(0, 2.1, -19);
-    this.scene.add(backWall);
-    this.addCollision(backWall);
 
     // Left Wall
     const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.2, 34), wallMat);
@@ -215,31 +435,31 @@ export class StoreWorld {
     this.scene.add(rightWall);
     this.addCollision(rightWall);
 
-    // Front Wall with Glass Windows and Doors
+    // Front Storefront
     this.buildFrontStorefront();
 
-    // Backroom / Storage Room Wall with Doorway
+    // Compact Realistic Back Storage Partition (Z = -12)
     this.buildBackroomPartition();
 
-    // Aisles (Shelves with items)
+    // Aisles
     this.buildAisles();
 
-    // Drink Coolers on the Right Wall
+    // Cooler Wall
     this.buildCoolerWall();
 
-    // Checkout Counter & Cash Register
+    // Checkout Counter & Conveyor Belt & Wall Telephone
     this.buildCheckoutCounter();
 
-    // Storage Room Interior (Boxes, Breaker Panel, Red Phone, Mop)
+    // Storage Room Interior & Rear Back Door
     this.buildStorageRoom();
 
-    // Security Office Desk & CCTV CRT Monitor
-    this.buildSecurityStation();
+    // Physical CCTV Camera Models
+    this.buildCctvCameraMeshes();
 
     // Lighting Fixtures
     this.setupLighting();
 
-    // Exterior / Parking Lot / Rain
+    // Dark Rainy Exterior (Back Alley with Outdoor Electrical Breaker & Parking)
     this.buildExterior();
   }
 
@@ -250,17 +470,14 @@ export class StoreWorld {
 
   private buildFrontStorefront() {
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.3 });
-    const glassMat = new THREE.MeshPhysicalMaterial({
+    const glassMat = new THREE.MeshStandardMaterial({
       color: 0x88bbcc,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.32,
       roughness: 0.1,
       metalness: 0.1,
-      transmission: 0.9,
-      ior: 1.5,
     });
 
-    // Front wall segments
     const leftFront = new THREE.Mesh(new THREE.BoxGeometry(9, 4.2, 0.4), frameMat);
     leftFront.position.set(-8.5, 2.1, 15);
     this.scene.add(leftFront);
@@ -271,12 +488,11 @@ export class StoreWorld {
     this.scene.add(rightFront);
     this.addCollision(rightFront);
 
-    // Header above door
     const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(8, 1.2, 0.4), frameMat);
     doorHeader.position.set(0, 3.6, 15);
     this.scene.add(doorHeader);
 
-    // Store Neon Sign above front entrance
+    // Neon Storefront Sign
     const signTex = createSignTexture('K&M MART', 'OPEN 24 HOURS • OVERNIGHT SHIFT', '#0a233b', '#62dbfb');
     const signMesh = new THREE.Mesh(
       new THREE.BoxGeometry(7, 1.4, 0.2),
@@ -286,9 +502,9 @@ export class StoreWorld {
     this.scene.add(signMesh);
 
     // Front Sliding Glass Doors
-    const doorGlass = new THREE.Mesh(new THREE.BoxGeometry(6, 3.0, 0.15), glassMat);
-    doorGlass.position.set(0, 1.5, 15);
-    this.scene.add(doorGlass);
+    const frontDoor = new THREE.Mesh(new THREE.BoxGeometry(6, 3.0, 0.15), glassMat);
+    frontDoor.position.set(0, 1.5, 15);
+    this.scene.add(frontDoor);
 
     // Interactive Front Door Deadbolt
     const lockMesh = new THREE.Mesh(
@@ -302,7 +518,7 @@ export class StoreWorld {
     this.interactives.push({
       id: 'front_door_lock',
       name: 'Front Door Deadbolt',
-      prompt: 'Lock / Unlock Front Entrance',
+      prompt: 'Lock / Unlock Front Entrance [E]',
       mesh: lockMesh,
       position: new THREE.Vector3(0, 1.4, 14.8),
       type: 'door',
@@ -312,511 +528,819 @@ export class StoreWorld {
   private buildBackroomPartition() {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x82888c, roughness: 0.85 });
 
-    // Partition wall dividing store from backroom at Z = -11
-    // Leaves a 2.4m door opening at X = -7.5
-    const partLeft = new THREE.Mesh(new THREE.BoxGeometry(4, 4.2, 0.3), wallMat);
-    partLeft.position.set(-11, 2.1, -11);
+    // Partition wall at Z = -12 (X: -13 to 13)
+    // Left segment (X: -13 to -4)
+    const partLeft = new THREE.Mesh(new THREE.BoxGeometry(9.0, 4.2, 0.3), wallMat);
+    partLeft.position.set(-8.5, 2.1, -12);
     this.scene.add(partLeft);
     this.addCollision(partLeft);
 
-    const partRight = new THREE.Mesh(new THREE.BoxGeometry(16, 4.2, 0.3), wallMat);
-    partRight.position.set(5, 2.1, -11);
+    // Doorway opening (X: -4 to -1.6)
+    const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.3), wallMat);
+    doorHeader.position.set(-2.8, 3.5, -12);
+    this.scene.add(doorHeader);
+
+    // Right segment (X: -1.6 to 13)
+    const partRight = new THREE.Mesh(new THREE.BoxGeometry(14.6, 4.2, 0.3), wallMat);
+    partRight.position.set(5.7, 2.1, -12);
     this.scene.add(partRight);
     this.addCollision(partRight);
 
-    const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.4, 0.3), wallMat);
-    doorHeader.position.set(-7.7, 3.5, -11);
-    this.scene.add(doorHeader);
-
-    // "EMPLOYEES ONLY" Warning Sign above door
-    const empSignTex = createSignTexture('EMPLOYEES ONLY', 'AUTHORIZED SHIFT WORKERS ONLY', '#441111', '#ffcccc');
+    // "EMPLOYEES ONLY" Warning Sign
+    const empSignTex = createSignTexture('EMPLOYEES ONLY', 'AUTHORIZED STAFF ONLY', '#441111', '#ffcccc');
     const empSign = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 0.6, 0.05),
+      new THREE.BoxGeometry(2.2, 0.55, 0.05),
       new THREE.MeshStandardMaterial({ map: empSignTex })
     );
-    empSign.position.set(-7.7, 3.2, -10.8);
+    empSign.position.set(-2.8, 3.2, -11.82);
     this.scene.add(empSign);
   }
 
   private buildAisles() {
-    // 4 Main Shelf units running along Z from -9 to +8
-    // X positions: Aisle 1 & 2 (-4.5), Aisle 3 & 4 (0), Aisle 5 & 6 (+5)
-    // Aisle 6 is the furthest and darkest aisle!
     const shelfXPositions = [-4.5, 0.5, 5.5];
     const shelfMat = new THREE.MeshStandardMaterial({ color: 0x4a4d52, metalness: 0.7, roughness: 0.4 });
 
     shelfXPositions.forEach((xPos, index) => {
       const aisleNum = index * 2 + 1;
-      // Shelf upright frame
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 15), shelfMat);
       shelf.position.set(xPos, 1.2, -1);
       this.scene.add(shelf);
       this.addCollision(shelf);
 
-      // Populate shelf with procedural items (cans, cereal boxes, chips)
-      this.populateShelfItems(xPos, aisleNum);
+      this.populateShelfItems(xPos);
 
-      // Hanging Aisle Number Sign
-      const aisleSignTex = createSignTexture(`AISLE ${aisleNum} & ${aisleNum + 1}`, index === 2 ? 'BEVERAGES • SPECIALS' : 'GROCERY • ESSENTIALS', '#202830', '#f0f0f0');
-      const aisleSign = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 0.6, 0.05),
+      const aisleSignTex = createSignTexture(
+        `AISLE ${aisleNum} & ${aisleNum + 1}`,
+        index === 2 ? 'BEVERAGES • SPECIALS' : 'GROCERY • ESSENTIALS',
+        '#1d2d44',
+        '#ffffff'
+      );
+      const sign = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 0.45, 0.05),
         new THREE.MeshStandardMaterial({ map: aisleSignTex })
       );
-      aisleSign.position.set(xPos, 3.2, 6.5);
-      this.scene.add(aisleSign);
-
-      // Aisle Restock Target Hitbox
-      const restockTarget = new THREE.Mesh(
-        new THREE.BoxGeometry(1.4, 0.8, 1.5),
-        new THREE.MeshBasicMaterial({ visible: false })
-      );
-      restockTarget.position.set(xPos + (index % 2 === 0 ? 0.9 : -0.9), 1.0, 0);
-      this.scene.add(restockTarget);
-
-      this.interactives.push({
-        id: `shelf_restock_${index + 1}`,
-        name: `Aisle ${aisleNum} Empty Shelf`,
-        prompt: `Restock Aisle ${aisleNum} Products`,
-        mesh: restockTarget,
-        position: restockTarget.position.clone(),
-        type: 'restock',
-      });
-    });
-
-    // Floor Spills (puddles requiring mop)
-    const spillTex = new THREE.CanvasTexture(this.createSpillCanvas());
-    const spillGeo = new THREE.PlaneGeometry(1.8, 1.4);
-    const spillMat = new THREE.MeshStandardMaterial({
-      map: spillTex,
-      transparent: true,
-      roughness: 0.1,
-      metalness: 0.2,
-    });
-    const spill = new THREE.Mesh(spillGeo, spillMat);
-    spill.rotation.x = -Math.PI / 2;
-    spill.position.set(-2.2, 0.02, 3.0);
-    this.scene.add(spill);
-
-    this.interactives.push({
-      id: 'spill_1',
-      name: 'Mysterious Liquid Spill',
-      prompt: 'Clean Spill with Mop',
-      mesh: spill,
-      position: spill.position.clone(),
-      type: 'mop',
+      sign.position.set(xPos, 3.2, 6.5);
+      this.scene.add(sign);
     });
   }
 
-  private createSpillCanvas(): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d')!;
+  private populateShelfItems(shelfX: number) {
+    const itemColors = [0xbb2222, 0x2277bb, 0x22aa55, 0xddaa22, 0x8844aa, 0xee7722];
+    const itemMatCache = itemColors.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5 }));
 
-    const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 58);
-    grad.addColorStop(0, 'rgba(80, 20, 15, 0.85)'); // Blood-tinged soda or mystery liquid
-    grad.addColorStop(0.7, 'rgba(120, 30, 20, 0.7)');
-    grad.addColorStop(1, 'rgba(120, 30, 20, 0)');
+    for (let z = -7; z <= 5; z += 1.8) {
+      for (let tier = 0; tier < 3; tier++) {
+        const y = 0.55 + tier * 0.75;
+        const sideOffset = (Math.random() > 0.5 ? 1 : -1) * 0.72;
+        const mat = itemMatCache[Math.floor(Math.random() * itemMatCache.length)];
 
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(64, 64, 56, 0, Math.PI * 2);
-    ctx.fill();
-    return canvas;
-  }
-
-  private populateShelfItems(x: number, _aisleNum: number) {
-    const itemColors = [0xcc2222, 0x2255cc, 0x22aa33, 0xddaa11, 0xdd6611, 0x772299];
-    const canMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.2 });
-
-    // 3 shelves of items along Z
-    for (let z = -7; z <= 6; z += 1.8) {
-      // Left side boxes
-      const boxMat = new THREE.MeshStandardMaterial({
-        color: itemColors[Math.floor(Math.random() * itemColors.length)],
-        roughness: 0.5,
-      });
-      const box = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.35), boxMat);
-      box.position.set(x - 0.65, 1.4, z);
-      this.scene.add(box);
-
-      // Right side cans
-      const can = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.3, 12), canMat);
-      can.position.set(x + 0.65, 0.8, z);
-      this.scene.add(can);
-    }
-  }
-
-  private buildCoolerWall() {
-    // 5 Drink Coolers along Right Wall (X = 12.5, Z from -8 to +8)
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x99ddff,
-      transparent: true,
-      opacity: 0.35,
-      roughness: 0.1,
-      metalness: 0.2,
-      transmission: 0.8,
-    });
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.3 });
-
-    for (let i = 0; i < 5; i++) {
-      const zPos = -7 + i * 3.4;
-
-      // Cooler Frame & Back
-      const coolerBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.2, 3.0), frameMat);
-      coolerBox.position.set(12.2, 1.6, zPos);
-      this.scene.add(coolerBox);
-      this.addCollision(coolerBox);
-
-      // Glass door
-      const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3.0, 2.8), glassMat);
-      door.position.set(11.55, 1.6, zPos);
-      this.scene.add(door);
-      this.coolerDoors.push(door);
-
-      // Cooler interior neon tube light
-      const coolerLight = new THREE.PointLight(0x70d0ff, 0.8, 4);
-      coolerLight.position.set(11.8, 2.8, zPos);
-      this.scene.add(coolerLight);
-      this.lights.push(coolerLight);
-
-      // Drink cans/bottles on shelves
-      const drinkMat = new THREE.MeshStandardMaterial({
-        color: i % 2 === 0 ? 0x00cc88 : 0xee2222,
-        roughness: 0.2,
-        metalness: 0.7,
-      });
-      for (let d = -1; d <= 1; d += 0.5) {
-        const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 10), drinkMat);
-        bottle.position.set(11.9, 1.2, zPos + d);
-        this.scene.add(bottle);
+        if (tier === 0) {
+          const can = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.28, 8), mat);
+          can.position.set(shelfX + sideOffset, y, z);
+          this.scene.add(can);
+        } else {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.32, 0.18), mat);
+          box.position.set(shelfX + sideOffset, y, z);
+          this.scene.add(box);
+        }
       }
     }
   }
 
-  private buildCheckoutCounter() {
-    // Checkout Counter is near front entrance at X = -8, Z = 9 to 13
-    const counterMat = new THREE.MeshStandardMaterial({ color: 0x2d3238, roughness: 0.4, metalness: 0.2 });
+  private buildCoolerWall() {
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x202428, metalness: 0.8, roughness: 0.2 });
+    // NOTE: was MeshPhysicalMaterial + transmission, which forces a real-time transmission
+    // render pass PER DOOR (6 of them here) and was a major source of frame lag. A transparent
+    // MeshStandardMaterial reads as the same tinted glass at a fraction of the render cost.
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x88bbcc,
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.08,
+      metalness: 0.1,
+    });
 
-    // L-shaped counter
-    const mainCounter = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 4.2), counterMat);
-    mainCounter.position.set(-8.2, 0.55, 10.5);
+    const coolerHousing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.2, 18), frameMat);
+    coolerHousing.position.set(12.3, 1.6, -1);
+    this.scene.add(coolerHousing);
+    this.addCollision(coolerHousing);
+
+    for (let z = -8; z <= 6; z += 2.8) {
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.8, 2.4), glassMat);
+      door.position.set(11.55, 1.6, z);
+      this.scene.add(door);
+    }
+
+    // 2 optimized cooler bank lights instead of 6 separate point lights
+    [-4, 3].forEach((z) => {
+      const light = new THREE.PointLight(0xccf0ff, 6.0, 7.0);
+      light.position.set(11.8, 2.2, z);
+      this.scene.add(light);
+    });
+  }
+
+  private buildCheckoutCounter() {
+    const counterMat = new THREE.MeshStandardMaterial({ color: 0x22262b, roughness: 0.6 });
+
+    // Main checkout counter
+    const mainCounter = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.05, 3.6), counterMat);
+    mainCounter.position.set(-8.5, 0.525, 10.4);
     this.scene.add(mainCounter);
     this.addCollision(mainCounter);
 
-    // Cash Register unit
-    const registerBaseMat = new THREE.MeshStandardMaterial({ color: 0x1a1d20, metalness: 0.6, roughness: 0.3 });
-    const regBase = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.6), registerBaseMat);
-    regBase.position.set(-8.2, 1.22, 10.2);
+    // Moving Conveyor Belt Mesh
+    this.conveyorTexture = createConveyorBeltTexture();
+    const beltMat = new THREE.MeshStandardMaterial({
+      map: this.conveyorTexture,
+      roughness: 0.85,
+      metalness: 0.15,
+    });
+    this.conveyorBeltMesh = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 2.5), beltMat);
+    this.conveyorBeltMesh.position.set(-8.5, 1.07, 10.95);
+    this.conveyorBeltMesh.receiveShadow = true;
+    this.scene.add(this.conveyorBeltMesh);
+
+    // Metal guide rails
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x5a6069, metalness: 0.85, roughness: 0.25 });
+    const railL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 2.5), railMat);
+    railL.position.set(-8.88, 1.11, 10.95);
+    this.scene.add(railL);
+
+    const railR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 2.5), railMat);
+    railR.position.set(-8.12, 1.11, 10.95);
+    this.scene.add(railR);
+
+    // Recessed Optical Barcode Scanner Zone (Z = 9.55)
+    const scannerBezelMat = new THREE.MeshStandardMaterial({ color: 0x889098, metalness: 0.9, roughness: 0.2 });
+    const scannerBezel = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.025, 0.38), scannerBezelMat);
+    scannerBezel.position.set(-8.5, 1.065, 9.55);
+    this.scene.add(scannerBezel);
+
+    const scannerGlassMat = new THREE.MeshStandardMaterial({
+      color: 0x051a14,
+      metalness: 0.6,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.92,
+    });
+    const scannerGlass = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.02, 0.28), scannerGlassMat);
+    scannerGlass.position.set(-8.5, 1.072, 9.55);
+    this.scene.add(scannerGlass);
+
+    // Glowing Optical Laser Line Bar
+    const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    this.scannerLaserMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.018), laserMat);
+    this.scannerLaserMesh.rotation.x = -Math.PI / 2;
+    this.scannerLaserMesh.position.set(-8.5, 1.078, 9.55);
+    this.scene.add(this.scannerLaserMesh);
+
+    this.scannerLight = new THREE.PointLight(0xff0022, 1.2, 1.4);
+    this.scannerLight.position.set(-8.5, 1.15, 9.55);
+    this.scene.add(this.scannerLight);
+
+    const scannerHitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.4, 0.5),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    scannerHitbox.position.set(-8.5, 1.15, 9.55);
+    this.scene.add(scannerHitbox);
+
+    this.interactives.push({
+      id: 'optical_scanner',
+      name: 'Optical Barcode Scanner',
+      prompt: 'Scan item on belt [Click or E]',
+      mesh: scannerHitbox,
+      position: new THREE.Vector3(-8.5, 1.15, 9.55),
+      type: 'optical_scanner',
+    });
+
+    // Bagging Area Tray (Z = 8.85) - NO CARDBOARD BOXES
+    const baggingTrayMat = new THREE.MeshStandardMaterial({ color: 0x444b54, metalness: 0.7, roughness: 0.35 });
+    const baggingTray = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.03, 0.68), baggingTrayMat);
+    baggingTray.position.set(-8.5, 1.06, 8.85);
+    this.scene.add(baggingTray);
+
+    // Cash Register POS Terminal (Z = 9.15)
+    const regBaseMat = new THREE.MeshStandardMaterial({ color: 0x181b1e, metalness: 0.7, roughness: 0.3 });
+    const regBase = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.12, 0.42), regBaseMat);
+    regBase.position.set(-8.5, 1.11, 9.15);
     this.scene.add(regBase);
 
-    // Digital Monitor screen (facing cashier)
     const screenMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.35, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x003311, emissive: 0x00ff44, emissiveIntensity: 0.4 })
+      new THREE.BoxGeometry(0.32, 0.22, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x00220a, emissive: 0x00e644, emissiveIntensity: 0.45 })
     );
-    screenMesh.position.set(-8.2, 1.55, 10.1);
+    screenMesh.position.set(-8.5, 1.28, 9.07);
+    screenMesh.rotation.x = 0.2;
     this.scene.add(screenMesh);
 
-    // Barcode hand scanner cradle
-    const scannerMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.22, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0xd92222 })
+    const regHitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.2, 1.2),
+      new THREE.MeshBasicMaterial({ visible: false })
     );
-    scannerMesh.position.set(-7.7, 1.2, 10.7);
-    this.scene.add(scannerMesh);
-
-    // Counter service bell
-    const bellMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.1, 0.08, 16),
-      new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 })
-    );
-    bellMesh.position.set(-7.5, 1.15, 9.4);
-    this.scene.add(bellMesh);
-
-    // Register Interactive Hitbox
-    const regHitbox = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 2.0), new THREE.MeshBasicMaterial({ visible: false }));
-    regHitbox.position.set(-8.2, 1.2, 10.2);
+    regHitbox.position.set(-8.5, 1.2, 9.15);
     this.scene.add(regHitbox);
 
     this.interactives.push({
       id: 'register',
-      name: 'Cash Register & POS System',
-      prompt: 'Check Out Customer / Operate Register',
+      name: 'Cash Register & POS',
+      prompt: 'Access Register / Checkout Station [E]',
       mesh: regHitbox,
-      position: new THREE.Vector3(-8.2, 1.2, 10.2),
+      position: new THREE.Vector3(-8.5, 1.2, 9.15),
       type: 'register',
     });
 
-    // Cigarette and lottery display behind counter
-    const cigRack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 2.2, 3.8),
-      new THREE.MeshStandardMaterial({ color: 0x222, metalness: 0.5 })
+    // ==========================================
+    // WALL-MOUNTED TELEPHONE
+    // Mounted directly to the interior perimeter wall on the right side of the cashier station (X = -12.78, Y = 1.6, Z = 9.2)
+    // ==========================================
+    const phoneGroup = new THREE.Group();
+    phoneGroup.position.set(-12.78, 1.65, 9.2);
+    phoneGroup.rotation.y = Math.PI / 2; // Facing the cashier (+X)
+
+    const phoneBaseMat = new THREE.MeshStandardMaterial({ color: 0xb52222, roughness: 0.35 });
+    const phoneBase = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.44, 0.12), phoneBaseMat);
+    phoneGroup.add(phoneBase);
+
+    const dialMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.8, roughness: 0.2 });
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 16), dialMat);
+    dial.rotation.x = Math.PI / 2;
+    dial.position.set(0, -0.04, 0.07);
+    phoneGroup.add(dial);
+
+    const forkMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9 });
+    const fork = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.06, 0.06), forkMat);
+    fork.position.set(0, 0.15, 0.06);
+    phoneGroup.add(fork);
+
+    const handset = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.34, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.3 })
     );
-    cigRack.position.set(-11.5, 2.1, 10.5);
-    this.scene.add(cigRack);
-    this.addCollision(cigRack);
+    handset.position.set(0, 0.15, 0.11);
+    phoneGroup.add(handset);
+
+    this.scene.add(phoneGroup);
+
+    const phoneHitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    phoneHitbox.position.set(-12.4, 1.65, 9.2);
+    this.scene.add(phoneHitbox);
+
+    this.interactives.push({
+      id: 'telephone',
+      name: 'Wall-Mounted Telephone',
+      prompt: 'Pick up the phone [E]',
+      mesh: phoneHitbox,
+      position: new THREE.Vector3(-12.4, 1.65, 9.2),
+      type: 'telephone',
+    });
   }
 
   private buildStorageRoom() {
-    // Backroom is behind partition at Z < -11
-    // 1. Circuit Breaker Box on wall
-    const breakerMat = new THREE.MeshStandardMaterial({ color: 0x505860, metalness: 0.8, roughness: 0.3 });
-    const breakerBox = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.9, 0.7), breakerMat);
-    breakerBox.position.set(-12.8, 2.0, -14);
-    this.scene.add(breakerBox);
+    // Clean, atmospheric storage room (Z: -12 to -19, X: -13 to 13)
+    const backStoreWallMat = new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.85 });
 
-    // Warning sticker on breaker
-    const breakerStickerTex = createSignTexture('HIGH VOLTAGE', 'DANGER // 480V MAIN', '#881111', '#ffff00');
-    const stickerMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 0.2),
-      new THREE.MeshBasicMaterial({ map: breakerStickerTex })
-    );
-    stickerMesh.rotation.y = Math.PI / 2;
-    stickerMesh.position.set(-12.69, 2.2, -14);
-    this.scene.add(stickerMesh);
+    // Rear Store Building Wall with Back Exit Doorway at Z = -19
+    // Left segment (X: -13 to -1.2)
+    const wallRearL = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.2, 0.4), backStoreWallMat);
+    wallRearL.position.set(-7.1, 2.1, -19.0);
+    this.scene.add(wallRearL);
+    this.addCollision(wallRearL);
 
-    this.interactives.push({
-      id: 'breaker_box',
-      name: 'Main Electrical Breaker Box',
-      prompt: 'Reset Tripped Breakers',
-      mesh: breakerBox,
-      position: new THREE.Vector3(-12.6, 2.0, -14),
-      type: 'breaker',
+    // Right segment (X: 1.2 to 13)
+    const wallRearR = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.2, 0.4), backStoreWallMat);
+    wallRearR.position.set(7.1, 2.1, -19.0);
+    this.scene.add(wallRearR);
+    this.addCollision(wallRearR);
+
+    // Doorway Header (X: -1.2 to 1.2)
+    const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.4), backStoreWallMat);
+    doorHeader.position.set(0, 3.5, -19.0);
+    this.scene.add(doorHeader);
+
+    // ==========================================
+    // REAR EMERGENCY EXIT DOOR (Leads to dark rainy alleyway)
+    // ==========================================
+    this.backDoorMesh = new THREE.Group();
+    this.backDoorMesh.position.set(-1.1, 0, -19.0); // Hinge on left side of doorway
+
+    const metalDoorMat = new THREE.MeshStandardMaterial({
+      color: 0x242a32,
+      metalness: 0.85,
+      roughness: 0.3,
     });
 
-    // 2. Storage Supply Boxes (Restock Crate source)
-    const boxTex = createBoxTexture('BEVERAGE / SOUP RESTOCK');
-    const crateMat = new THREE.MeshStandardMaterial({ map: boxTex });
+    // 1. Reinforced Steel Door Leaf
+    const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.76, 0.08), metalDoorMat);
+    doorLeaf.position.set(1.1, 1.38, 0);
+    doorLeaf.castShadow = true;
+    doorLeaf.receiveShadow = true;
+    this.backDoorMesh.add(doorLeaf);
 
-    const crate1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 1.2), crateMat);
-    crate1.position.set(-10.5, 0.4, -16.5);
-    this.scene.add(crate1);
-    this.addCollision(crate1);
+    // Embossed inner panel bevels
+    const panelBevelMat = new THREE.MeshStandardMaterial({ color: 0x1a1e24, metalness: 0.9, roughness: 0.4 });
+    const topPanel = new THREE.Mesh(new THREE.BoxGeometry(1.88, 1.0, 0.02), panelBevelMat);
+    topPanel.position.set(1.1, 1.85, 0.045);
+    this.backDoorMesh.add(topPanel);
 
-    const crate2 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), crateMat);
-    crate2.position.set(-10.5, 1.15, -16.5);
-    this.scene.add(crate2);
+    const bottomPanel = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.85, 0.02), panelBevelMat);
+    bottomPanel.position.set(1.1, 0.65, 0.045);
+    this.backDoorMesh.add(bottomPanel);
+
+    // 2. High-Contrast Emergency Exit Warning Sign
+    const exitSignTex = createEmergencyDoorSignTexture();
+    const signMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.1, 0.55),
+      new THREE.MeshBasicMaterial({ map: exitSignTex })
+    );
+    signMesh.position.set(1.1, 1.75, 0.06);
+    this.backDoorMesh.add(signMesh);
+
+    // 3. Heavy Red Panic Crash Bar (Push Bar)
+    const pushBarMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.8, roughness: 0.2 });
+    const pushBar = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 1.7, 12), pushBarMat);
+    pushBar.rotation.z = Math.PI / 2;
+    pushBar.position.set(1.1, 1.15, 0.09);
+    this.backDoorMesh.add(pushBar);
+
+    // Crash bar mounting brackets
+    const bracketMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9 });
+    const bracketL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.1), bracketMat);
+    bracketL.position.set(0.32, 1.15, 0.05);
+    this.backDoorMesh.add(bracketL);
+
+    const bracketR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.1), bracketMat);
+    bracketR.position.set(1.88, 1.15, 0.05);
+    this.backDoorMesh.add(bracketR);
+
+    // 4. Brushed Steel Kickplate at bottom
+    const kickplateMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9, roughness: 0.25 });
+    const kickplate = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.28, 0.02), kickplateMat);
+    kickplate.position.set(1.1, 0.16, 0.045);
+    this.backDoorMesh.add(kickplate);
+
+    // Exterior Steel Handle Lever
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.04, 0.08), handleMat);
+    handle.position.set(1.95, 1.25, -0.06);
+    this.backDoorMesh.add(handle);
+
+    this.scene.add(this.backDoorMesh);
+
+    // Doorway Heavy Steel Trim Frame
+    const frameTrimMat = new THREE.MeshStandardMaterial({ color: 0x181c22, metalness: 0.9, roughness: 0.3 });
+    const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.8, 0.45), frameTrimMat);
+    frameL.position.set(-1.18, 1.4, -19.0);
+    this.scene.add(frameL);
+
+    const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.8, 0.45), frameTrimMat);
+    frameR.position.set(1.18, 1.4, -19.0);
+    this.scene.add(frameR);
+
+    // Door interaction hitbox
+    const backDoorHitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 2.8, 0.6),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    backDoorHitbox.position.set(0, 1.4, -19.0);
+    this.scene.add(backDoorHitbox);
 
     this.interactives.push({
-      id: 'restock_supply_crate',
-      name: 'Product Inventory Crate',
-      prompt: 'Pick up Restocking Supplies',
-      mesh: crate1,
-      position: new THREE.Vector3(-10.5, 0.8, -16.5),
-      type: 'pickup_box',
+      id: 'back_door',
+      name: 'Rear Service Exit Door',
+      prompt: 'Open / Close Rear Exit Door [E]',
+      mesh: backDoorHitbox,
+      position: new THREE.Vector3(0, 1.4, -19.0),
+      type: 'back_door',
     });
 
-    // 3. Mop Bucket
-    const bucketMat = new THREE.MeshStandardMaterial({ color: 0xddaa11, roughness: 0.3 });
-    const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.5, 16), bucketMat);
-    bucket.position.set(-6, 0.25, -14);
-    this.scene.add(bucket);
-
-    const mopHandle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x997744 })
+    // Solid collision barrier blocking doorway when door is CLOSED (prevents nocliping!)
+    this.doorCollisionBox = new THREE.Box3(
+      new THREE.Vector3(-1.18, 0, -19.3),
+      new THREE.Vector3(1.18, 2.8, -18.7)
     );
-    mopHandle.rotation.z = 0.2;
-    mopHandle.position.set(-5.9, 0.9, -14);
-    this.scene.add(mopHandle);
+    this.collisionBoxes.push(this.doorCollisionBox);
 
-    this.interactives.push({
-      id: 'mop_bucket',
-      name: 'Cleaning Mop & Bucket',
-      prompt: 'Grab Mop',
-      mesh: bucket,
-      position: new THREE.Vector3(-6, 0.5, -14),
-      type: 'mop_tool',
+    // ==========================================
+    // CCTV SURVEILLANCE DESK & CRT MONITORS
+    // ==========================================
+    const deskGroup = new THREE.Group();
+    deskGroup.position.set(-5.0, 0, -18.2);
+
+    // Warm wooden laminate tabletop
+    const deskTopMat = new THREE.MeshStandardMaterial({ color: 0x634d3b, roughness: 0.65, metalness: 0.1 });
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.1), deskTopMat);
+    deskTop.position.set(0, 0.92, 0);
+    deskGroup.add(deskTop);
+
+    // Steel frame legs
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x33373d, metalness: 0.8, roughness: 0.25 });
+    const legPositions = [
+      [-1.1, 0.44, -0.45],
+      [1.1, 0.44, -0.45],
+      [-1.1, 0.44, 0.45],
+      [1.1, 0.44, 0.45],
+    ];
+    legPositions.forEach(([lx, ly, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.88, 12), legMat);
+      leg.position.set(lx, ly, lz);
+      deskGroup.add(leg);
     });
 
-    // 4. The Corporate Red Emergency Phone (on desk in backroom)
-    const phoneDesk = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 0.9, 1.0),
-      new THREE.MeshStandardMaterial({ color: 0x3d352e })
+    // Computer keyboard and mouse pad
+    const keyboardMat = new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.5 });
+    const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.02, 0.22), keyboardMat);
+    keyboard.position.set(-0.2, 0.97, 0.25);
+    deskGroup.add(keyboard);
+
+    this.scene.add(deskGroup);
+
+    // Collision box for the desk
+    const deskCollision = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 0.95, 1.1),
+      new THREE.MeshBasicMaterial({ visible: false })
     );
-    phoneDesk.position.set(-1, 0.45, -17.5);
-    this.scene.add(phoneDesk);
-    this.addCollision(phoneDesk);
+    deskCollision.position.set(-5.0, 0.48, -18.2);
+    this.scene.add(deskCollision);
+    this.addCollision(deskCollision);
 
-    const phoneMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.35, 0.2, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0xcc1111, roughness: 0.3 }) // Ominous Red Rotary Phone
-    );
-    phoneMesh.position.set(-1, 0.98, -17.5);
-    this.scene.add(phoneMesh);
+    const crtCasingMat = new THREE.MeshStandardMaterial({ color: 0x282c32, roughness: 0.5 });
+    const crtScreenMat = new THREE.MeshBasicMaterial({ color: 0x184428 });
 
-    this.interactives.push({
-      id: 'corporate_phone',
-      name: 'Corporate Supervisor Hotline',
-      prompt: 'Call Supervisor / Inquire Rule Guidance',
-      mesh: phoneMesh,
-      position: new THREE.Vector3(-1, 1.0, -17.5),
-      type: 'phone',
-    });
-  }
-
-  private buildSecurityStation() {
-    // Security CCTV Station is in the back right corner (X = 8, Z = -16)
-    const desk = new THREE.Mesh(
-      new THREE.BoxGeometry(2.6, 0.95, 1.2),
-      new THREE.MeshStandardMaterial({ color: 0x22262a, metalness: 0.4, roughness: 0.5 })
-    );
-    desk.position.set(8.5, 0.48, -16.5);
-    this.scene.add(desk);
-    this.addCollision(desk);
-
-    // Multi-screen CRT monitors
-    const crtCasingMat = new THREE.MeshStandardMaterial({ color: 0x181c20, roughness: 0.6 });
-    const crtScreenMat = new THREE.MeshBasicMaterial({ color: 0x225533 }); // Glowing phosphor green
-
-    const crt1 = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.65, 0.55), crtCasingMat);
-    crt1.position.set(8.0, 1.3, -16.5);
+    const crt1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.62, 0.55), crtCasingMat);
+    crt1.position.set(-5.5, 1.28, -18.2);
     this.scene.add(crt1);
 
-    const screen1 = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.5), crtScreenMat);
-    screen1.position.set(8.0, 1.3, -16.22);
+    const screen1 = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.48), crtScreenMat);
+    screen1.position.set(-5.5, 1.28, -17.92);
     this.scene.add(screen1);
 
-    const crt2 = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.65, 0.55), crtCasingMat);
-    crt2.position.set(9.0, 1.3, -16.5);
+    const crt2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.62, 0.55), crtCasingMat);
+    crt2.position.set(-4.5, 1.28, -18.2);
     this.scene.add(crt2);
 
-    const screen2 = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.5), crtScreenMat);
-    screen2.position.set(9.0, 1.3, -16.22);
+    const screen2 = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.48), crtScreenMat);
+    screen2.position.set(-4.5, 1.28, -17.92);
     this.scene.add(screen2);
-
-    // Terminal Keyboard
-    const kb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.05, 0.25),
-      new THREE.MeshStandardMaterial({ color: 0x111111 })
-    );
-    kb.position.set(8.5, 0.98, -16.1);
-    this.scene.add(kb);
 
     this.interactives.push({
       id: 'cctv_terminal',
-      name: 'Store CCTV Security Monitor',
-      prompt: 'Access Security Camera Feeds',
+      name: 'Store CCTV Surveillance Terminal',
+      prompt: 'View Live 3D CCTV Feeds [E]',
       mesh: crt1,
-      position: new THREE.Vector3(8.5, 1.2, -16.0),
+      position: new THREE.Vector3(-5.0, 1.2, -17.8),
       type: 'cctv',
     });
   }
 
+  public toggleBackDoor() {
+    this.isBackDoorOpen = !this.isBackDoorOpen;
+    if (this.backDoorMesh) {
+      this.backDoorMesh.rotation.y = this.isBackDoorOpen ? -Math.PI / 1.8 : 0;
+    }
+
+    // Dynamic collision toggling: remove barrier when open so player can walk through!
+    if (this.doorCollisionBox) {
+      if (this.isBackDoorOpen) {
+        this.collisionBoxes = this.collisionBoxes.filter((b) => b !== this.doorCollisionBox);
+      } else {
+        if (!this.collisionBoxes.includes(this.doorCollisionBox)) {
+          this.collisionBoxes.push(this.doorCollisionBox);
+        }
+      }
+    }
+
+    sound.playDoorLock();
+  }
+
+  private buildCctvCameraMeshes() {
+    const camBodyMat = new THREE.MeshStandardMaterial({ color: 0x1f2328, metalness: 0.7, roughness: 0.3 });
+    const lensRingMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, metalness: 0.9, roughness: 0.1 });
+    const recLedMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+    this.cctvMeshes = [];
+
+    this.cctvDefs.forEach((camDef) => {
+      const camGroup = new THREE.Group();
+      camGroup.position.copy(camDef.position);
+
+      const mountPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16), camBodyMat);
+      mountPlate.position.set(0, 0.02, 0);
+      camGroup.add(mountPlate);
+
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 8), camBodyMat);
+      arm.position.set(0, -0.09, 0);
+      camGroup.add(arm);
+
+      const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.095, 0.32, 16), camBodyMat);
+      housing.rotation.x = Math.PI / 2;
+      housing.position.set(0, -0.18, 0.06);
+      camGroup.add(housing);
+
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.04, 16), lensRingMat);
+      lens.rotation.x = Math.PI / 2;
+      lens.position.set(0, -0.18, 0.22);
+      camGroup.add(lens);
+
+      const led = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), recLedMat);
+      led.position.set(0.06, -0.14, 0.21);
+      camGroup.add(led);
+
+      camGroup.lookAt(camDef.target);
+      this.scene.add(camGroup);
+      this.cctvMeshes.push(camGroup);
+    });
+  }
+
+  /**
+   * Hides the active CCTV 3D camera mesh so the camera view is NEVER inside its own 3D model!
+   */
+  public setCctvActiveCamera(index: number | null) {
+    this.cctvMeshes.forEach((mesh, idx) => {
+      mesh.visible = index === null || idx !== index;
+    });
+  }
+
   private setupLighting() {
-    // 6 Fluorescent ceiling light fixtures
+    const hemiLight = new THREE.HemisphereLight(0xdce8ff, 0x1f242e, 1.2);
+    this.scene.add(hemiLight);
+
+    const ambient = new THREE.AmbientLight(0x404856, 0.95);
+    this.scene.add(ambient);
+
+    // Fluorescent Ceiling Light Fixtures
     const lightPositions = [
-      new THREE.Vector3(-6, 3.9, 8),
-      new THREE.Vector3(2, 3.9, 8),
-      new THREE.Vector3(-6, 3.9, 0),
-      new THREE.Vector3(2, 3.9, 0),
-      new THREE.Vector3(-6, 3.9, -6),
-      new THREE.Vector3(2, 3.9, -6),
+      new THREE.Vector3(-6, 4.0, 8),
+      new THREE.Vector3(2, 4.0, 8),
+      new THREE.Vector3(-6, 4.0, 0),
+      new THREE.Vector3(2, 4.0, 0),
+      new THREE.Vector3(-6, 4.0, -6),
+      new THREE.Vector3(2, 4.0, -6),
     ];
 
     const fixtureMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
     const tubeMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: 0xeeffff,
-      emissiveIntensity: 0.9,
+      emissiveIntensity: 1.2,
     });
 
     lightPositions.forEach((pos) => {
-      // Fixture frame
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 2.6), fixtureMat);
-      frame.position.copy(pos);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 2.6), fixtureMat);
+      frame.position.set(pos.x, 4.14, pos.z);
       this.scene.add(frame);
 
-      // Fluorescent tube
       const tube = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 2.2), tubeMat);
-      tube.position.set(pos.x, pos.y - 0.06, pos.z);
+      tube.position.set(pos.x, 4.08, pos.z);
       this.scene.add(tube);
 
-      // Light source
-      const light = new THREE.PointLight(0xf4f8ff, 0.9, 12);
-      light.position.set(pos.x, pos.y - 0.3, pos.z);
-      light.castShadow = true;
-      light.shadow.bias = -0.002;
-      light.shadow.mapSize.width = 512;
-      light.shadow.mapSize.height = 512;
+      const light = new THREE.PointLight(0xf4f8ff, 25.0, 22, 1.6);
+      light.position.set(pos.x, 3.85, pos.z);
       this.scene.add(light);
       this.lights.push(light);
     });
 
-    // Storage Room Dim Yellow Light
-    const storageLight = new THREE.PointLight(0xffcc66, 0.6, 9);
-    storageLight.position.set(-6, 3.6, -15);
+    // Cash Register Overhead Light
+    const regFrame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 1.0), fixtureMat);
+    regFrame.position.set(-10.2, 4.14, 10.4);
+    this.scene.add(regFrame);
+
+    const counterLight = new THREE.PointLight(0xfff0dd, 22.0, 18, 1.6);
+    counterLight.position.set(-10.2, 3.9, 10.4);
+    this.scene.add(counterLight);
+    this.lights.push(counterLight);
+
+    // Storage Room Ceiling Fixture (Industrial cage fixture)
+    const storageLampGroup = new THREE.Group();
+    storageLampGroup.position.set(0, 4.14, -15.5);
+
+    const lampCanopy = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.06, 16),
+      new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 })
+    );
+    lampCanopy.position.y = -0.03;
+    storageLampGroup.add(lampCanopy);
+
+    const cageMat = new THREE.MeshStandardMaterial({ color: 0x222222, wireframe: true });
+    const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.35, 12, 3, true), cageMat);
+    cage.position.y = -0.28;
+    storageLampGroup.add(cage);
+
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 1.5 })
+    );
+    bulb.position.y = -0.25;
+    storageLampGroup.add(bulb);
+
+    this.scene.add(storageLampGroup);
+
+    const storageLight = new THREE.PointLight(0xffcc66, 20.0, 18, 1.6);
+    storageLight.position.set(0, 3.85, -15.5);
     this.scene.add(storageLight);
     this.lights.push(storageLight);
 
-    // Emergency Red Beacon on ceiling
-    const emergGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.3, 16);
-    const emergMat = new THREE.MeshStandardMaterial({
-      color: 0xff0000,
-      emissive: 0x330000,
-      roughness: 0.2,
-    });
-    this.emergencyMesh = new THREE.Mesh(emergGeo, emergMat);
-    this.emergencyMesh.position.set(0, 4.0, 0);
-    this.scene.add(this.emergencyMesh);
-
-    this.emergencyLight = new THREE.PointLight(0xff1100, 0.0, 16);
-    this.emergencyLight.position.set(0, 3.8, 0);
-    this.scene.add(this.emergencyLight);
-
-    // Ambient night darkness
-    const ambient = new THREE.AmbientLight(0x081018, 0.35);
-    this.scene.add(ambient);
+    // Storm Thunder Flash Light
+    this.stormLight = new THREE.DirectionalLight(0xaaccff, 0.0);
+    this.stormLight.position.set(5, 15, 20);
+    this.scene.add(this.stormLight);
   }
 
   private buildExterior() {
-    // Wet Dark Parking Lot asphalt in front of store (Z > 15)
-    const asphaltTex = new THREE.CanvasTexture(this.createAsphaltCanvas());
-    asphaltTex.wrapS = THREE.RepeatWrapping;
-    asphaltTex.wrapT = THREE.RepeatWrapping;
-    asphaltTex.repeat.set(6, 6);
+    // 1. Front Parking Lot (Z: 15 to 39)
+    const frontAsphaltTex = new THREE.CanvasTexture(this.createAsphaltCanvas());
+    frontAsphaltTex.wrapS = THREE.RepeatWrapping;
+    frontAsphaltTex.wrapT = THREE.RepeatWrapping;
+    frontAsphaltTex.repeat.set(6, 6);
 
-    const lotGeo = new THREE.PlaneGeometry(50, 40);
-    const lotMat = new THREE.MeshStandardMaterial({
-      map: asphaltTex,
-      roughness: 0.2,
-      metalness: 0.1,
+    const frontParkingMat = new THREE.MeshStandardMaterial({
+      map: frontAsphaltTex,
+      roughness: 0.25,
+      metalness: 0.2,
     });
-    const lot = new THREE.Mesh(lotGeo, lotMat);
-    lot.rotation.x = -Math.PI / 2;
-    lot.position.set(0, -0.05, 34);
-    this.scene.add(lot);
 
-    // Exterior Streetlight in parking lot
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 7, 12), poleMat);
-    pole.position.set(8, 3.5, 28);
+    const parkingGeo = new THREE.PlaneGeometry(36, 24);
+    const parking = new THREE.Mesh(parkingGeo, frontParkingMat);
+    parking.rotation.x = -Math.PI / 2;
+    parking.position.set(0, -0.02, 27);
+    this.scene.add(parking);
+
+    // Front Parking Stall Yellow Markings (Stalls at X = -8, -3.5, 3.5, 8; Z = 24)
+    const yellowStripeMat = new THREE.MeshBasicMaterial({ color: 0xddaa11 });
+    const stallDividersX = [-10.2, -5.8, -1.2, 5.8, 10.2];
+    stallDividersX.forEach((x) => {
+      const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 5.5), yellowStripeMat);
+      stripe.rotation.x = -Math.PI / 2;
+      stripe.position.set(x, -0.012, 24.5);
+      this.scene.add(stripe);
+    });
+
+    const barrierMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+    const barrierL = new THREE.Mesh(new THREE.BoxGeometry(14, 0.9, 0.4), barrierMat);
+    barrierL.position.set(-11, 0.45, 38.8);
+    this.scene.add(barrierL);
+    this.addCollision(barrierL);
+
+    const barrierR = new THREE.Mesh(new THREE.BoxGeometry(14, 0.9, 0.4), barrierMat);
+    barrierR.position.set(11, 0.45, 38.8);
+    this.scene.add(barrierR);
+    this.addCollision(barrierR);
+
+    // Parking lot light pole
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x3a3f45, metalness: 0.7 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 7.5, 12), poleMat);
+    pole.position.set(8.0, 3.75, 26);
     this.scene.add(pole);
+    this.addCollision(pole);
 
-    const lampLight = new THREE.PointLight(0xffa844, 1.4, 25);
-    lampLight.position.set(8, 6.8, 28);
-    this.scene.add(lampLight);
+    const streetLight = new THREE.PointLight(0xff9933, 30.0, 28, 1.8);
+    streetLight.position.set(8.0, 7.2, 26);
+    this.scene.add(streetLight);
 
-    // Rain Particles
-    const rainCount = 1200;
-    const rainGeo = new THREE.BufferGeometry();
-    const rainPos = new Float32Array(rainCount * 3);
-    for (let i = 0; i < rainCount * 3; i += 3) {
-      rainPos[i] = (Math.random() - 0.5) * 40;
-      rainPos[i + 1] = Math.random() * 12;
-      rainPos[i + 2] = 15 + Math.random() * 25; // In parking lot
-    }
-    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-
-    const rainMat = new THREE.PointsMaterial({
-      color: 0x7799aa,
-      size: 0.08,
-      transparent: true,
-      opacity: 0.5,
+    // ==========================================
+    // 2. SCARY, DARK REAR SERVICE ALLEYWAY (Z: -19 to -44, X: -19 to 19)
+    // Dark cracked pavement, NO parking lines, eerie fog & deep shadows
+    // ==========================================
+    const darkAlleyTex = createDarkAlleyTexture();
+    const alleyMat = new THREE.MeshStandardMaterial({
+      map: darkAlleyTex,
+      roughness: 0.45,
+      metalness: 0.15,
     });
-    this.rainParticles = new THREE.Points(rainGeo, rainMat);
-    this.scene.add(this.rainParticles);
+
+    const alleyGeo = new THREE.PlaneGeometry(38, 28);
+    const alley = new THREE.Mesh(alleyGeo, alleyMat);
+    alley.rotation.x = -Math.PI / 2;
+    alley.position.set(0, -0.02, -33);
+    this.scene.add(alley);
+
+    // Exterior Brick Building Wall with Doorway Opening Cutout at Z = -19.25
+    // (NO BRICK WALL BLOCKING DOOR! Left & Right segments have doorway opening between X: -1.2 and 1.2)
+    const brickTex = createBrickTexture();
+    const brickMat = new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.9 });
+
+    // Left exterior brick segment (X: -13 to -1.2)
+    const rearExtWallL = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.6, 0.4), brickMat);
+    rearExtWallL.position.set(-7.1, 2.3, -19.25);
+    this.scene.add(rearExtWallL);
+    this.addCollision(rearExtWallL);
+
+    // Right exterior brick segment (X: 1.2 to 13)
+    const rearExtWallR = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.6, 0.4), brickMat);
+    rearExtWallR.position.set(7.1, 2.3, -19.25);
+    this.scene.add(rearExtWallR);
+    this.addCollision(rearExtWallR);
+
+    // Lintel header above doorway (Y: 2.8 to 4.6)
+    const rearExtHeader = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 0.4), brickMat);
+    rearExtHeader.position.set(0, 3.7, -19.25);
+    this.scene.add(rearExtHeader);
+
+    // Outside Back Fence Barrier (Z = -44)
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x181c20, metalness: 0.9, roughness: 0.5 });
+    const rearFence = new THREE.Mesh(new THREE.BoxGeometry(38, 3.5, 0.2), fenceMat);
+    rearFence.position.set(0, 1.75, -44.5);
+    this.scene.add(rearFence);
+    this.addCollision(rearFence);
+
+    // Left Alley Barrier (X = -18.5)
+    const alleyFenceL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.5, 28), fenceMat);
+    alleyFenceL.position.set(-18.5, 1.75, -33);
+    this.scene.add(alleyFenceL);
+    this.addCollision(alleyFenceL);
+
+    // Right Alley Barrier (X = 18.5)
+    const alleyFenceR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.5, 28), fenceMat);
+    alleyFenceR.position.set(18.5, 1.75, -33);
+    this.scene.add(alleyFenceR);
+    this.addCollision(alleyFenceR);
+
+    // Heavy Commercial Metal Dumpster in Alley (X = -8.0, Z = -27)
+    const dumpsterMat = new THREE.MeshStandardMaterial({ color: 0x163422, metalness: 0.6, roughness: 0.55 });
+    const dumpster = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.8, 2.0), dumpsterMat);
+    dumpster.position.set(-8.0, 0.9, -27);
+    this.scene.add(dumpster);
+    this.addCollision(dumpster);
+
+    // Alley Overhead Security Floodlight (Dim flickering orange sodium glow)
+    const alleySecurityLight = new THREE.PointLight(0xdd8833, 12.0, 16, 2.0);
+    alleySecurityLight.position.set(0, 3.5, -20.2);
+    this.scene.add(alleySecurityLight);
+
+    // ==========================================
+    // OUTDOOR MAIN ELECTRICAL BREAKER BOX & SUBSTATION
+    // Relocated FARTHER AWAY in the dark scary back alley at X = 11.5, Y = 1.8, Z = -28.5
+    // ==========================================
+    // Concrete Transformer Base
+    const padMat = new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.9 });
+    const transPad = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 1.6), padMat);
+    transPad.position.set(11.5, 0.2, -28.5);
+    this.scene.add(transPad);
+    this.addCollision(transPad);
+
+    // Vertical Steel Conduit Pipes
+    const conduitMat = new THREE.MeshStandardMaterial({ color: 0x71717a, metalness: 0.85, roughness: 0.2 });
+    const conduit1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.5, 12), conduitMat);
+    conduit1.position.set(11.0, 2.25, -28.7);
+    this.scene.add(conduit1);
+
+    const conduit2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.5, 12), conduitMat);
+    conduit2.position.set(12.0, 2.25, -28.7);
+    this.scene.add(conduit2);
+
+    // Breaker Cabinet Body
+    const breakerMat = new THREE.MeshStandardMaterial({ color: 0x272e35, metalness: 0.9, roughness: 0.25 });
+    const breakerBox = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.5, 0.35), breakerMat);
+    breakerBox.position.set(11.5, 1.8, -28.5);
+    this.scene.add(breakerBox);
+    this.addCollision(breakerBox);
+
+    // High Voltage Danger Warning Decal
+    const breakerSignTex = createSignTexture('DANGER 480V', 'MAIN CIRCUIT BREAKER PANEL', '#991b1b', '#fef08a');
+    const stickerMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.9, 0.38),
+      new THREE.MeshBasicMaterial({ map: breakerSignTex })
+    );
+    stickerMesh.position.set(11.5, 2.2, -28.32);
+    this.scene.add(stickerMesh);
+
+    // Local Spark Flashing Light for Broken Power
+    this.breakerSparkLight = new THREE.PointLight(0x60a5fa, 0, 10, 2);
+    this.breakerSparkLight.position.set(11.5, 1.8, -28.2);
+    this.scene.add(this.breakerSparkLight);
+
+    // Spark Particles for broken power
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkCount = 60;
+    const sparkPositions = new Float32Array(sparkCount * 3);
+    for (let i = 0; i < sparkCount; i++) {
+      sparkPositions[i * 3] = 11.5 + (Math.random() - 0.5) * 0.7;
+      sparkPositions[i * 3 + 1] = 1.8 + (Math.random() - 0.5) * 0.7;
+      sparkPositions[i * 3 + 2] = -28.3 + (Math.random() - 0.5) * 0.3;
+    }
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+    this.sparkParticles = new THREE.Points(
+      sparkGeo,
+      new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.08, transparent: true, opacity: 0.0 })
+    );
+    this.scene.add(this.sparkParticles);
+
+    // Interactive Breaker Object
+    this.breakerInteractiveObj = {
+      id: 'breaker_box',
+      name: 'Main Electrical Breaker Box',
+      prompt: 'Electrical Box — View Electrical Box [E]',
+      mesh: breakerBox,
+      position: new THREE.Vector3(11.5, 1.8, -28.5),
+      type: 'breaker',
+    };
+    this.interactives.push(this.breakerInteractiveObj);
+
+    // Rain Particle System covering exterior zones
+    this.createRain();
   }
 
   private createAsphaltCanvas(): HTMLCanvasElement {
@@ -825,69 +1349,207 @@ export class StoreWorld {
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#181a1d';
+    ctx.fillStyle = '#14171a';
     ctx.fillRect(0, 0, 256, 256);
 
-    // Noise specks
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
+    for (let i = 0; i < 4000; i++) {
+      const shade = Math.floor(20 + Math.random() * 30);
+      ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
     }
+
+    ctx.fillStyle = '#9e851a';
+    ctx.fillRect(30, 0, 8, 256);
+    ctx.fillRect(160, 0, 8, 256);
+
     return canvas;
   }
 
-  public update(delta: number) {
-    // 1. Rain animation
-    if (this.rainParticles) {
-      const pos = this.rainParticles.geometry.attributes.position.array as Float32Array;
-      for (let i = 1; i < pos.length; i += 3) {
-        pos[i] -= delta * 18;
-        if (pos[i] < 0) {
-          pos[i] = 12;
-        }
+  private createRain() {
+    const rainCount = 2400;
+    const rainGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(rainCount * 3);
+
+    for (let i = 0; i < rainCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 38;
+      positions[i * 3 + 1] = Math.random() * 14;
+      // Front parking lot or rear alley
+      if (Math.random() > 0.45) {
+        positions[i * 3 + 2] = 15.2 + Math.random() * 24;
+      } else {
+        positions[i * 3 + 2] = -19.2 - Math.random() * 23;
       }
-      this.rainParticles.geometry.attributes.position.needsUpdate = true;
     }
 
-    // 2. Lighting flickers & blackout handling
-    this.flickerTimer += delta;
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const rainMat = new THREE.PointsMaterial({
+      color: 0x99bbdd,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.7,
+    });
 
-    if (this.isBlackout) {
-      // All main lights off
-      this.lights.forEach((l) => (l.intensity = 0));
+    this.rainParticles = new THREE.Points(rainGeo, rainMat);
+    this.scene.add(this.rainParticles);
+  }
 
-      // Rotating emergency beacon
-      if (this.emergencyLight && this.emergencyMesh) {
-        const pulse = Math.sin(this.flickerTimer * 6);
-        this.emergencyLight.intensity = Math.max(0, pulse * 1.5);
-        (this.emergencyMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = Math.max(0, pulse * 2);
-      }
+  // ==========================================
+  // LIGHTING CONTROL METHODS
+  // ==========================================
+  public triggerSpecificLightDampening(lightIndex?: number, duration = 3.5, dimFactor = 0.2) {
+    const idx =
+      lightIndex !== undefined && lightIndex >= 0 && lightIndex < this.lights.length
+        ? lightIndex
+        : Math.floor(Math.random() * this.lights.length);
+
+    const existing = this.activeLightDampeners.find((d) => d.lightIndex === idx);
+    if (existing) {
+      existing.duration = duration;
+      existing.remaining = duration;
+      existing.targetFactor = dimFactor;
     } else {
-      if (this.emergencyLight) this.emergencyLight.intensity = 0;
-
-      // Occasional atmospheric subtle flicker on ceiling lights
-      const noise = Math.sin(this.flickerTimer * 3.7) * Math.cos(this.flickerTimer * 7.1);
-      const isFlickering = noise > 0.85;
-
-      this.lights.forEach((l, idx) => {
-        if (idx === 2 && isFlickering) {
-          l.intensity = Math.random() > 0.3 ? 0.9 : 0.1;
-        } else {
-          l.intensity = 0.9;
-        }
+      this.activeLightDampeners.push({
+        lightIndex: idx,
+        duration,
+        remaining: duration,
+        targetFactor: dimFactor,
+        flickerSpeed: 0.8 + Math.random() * 0.8,
       });
     }
   }
 
-  public setBlackout(active: boolean) {
-    this.isBlackout = active;
-  }
-
   public triggerBlackout() {
     this.isBlackout = true;
+    this.lights.forEach((l) => (l.intensity = 0));
+    if (this.sparkParticles) {
+      (this.sparkParticles.material as THREE.PointsMaterial).opacity = 0.95;
+    }
+    if (this.breakerSparkLight) {
+      this.breakerSparkLight.intensity = 14.0;
+    }
+    if (this.breakerInteractiveObj) {
+      this.breakerInteractiveObj.prompt = 'Electrical Box [Sparks!] — Fix Damaged Wiring [E]';
+    }
   }
 
   public restorePower() {
     this.isBlackout = false;
+    this.activeLightDampeners = [];
+    this.lights.forEach((l) => (l.intensity = 25.0));
+    if (this.sparkParticles) {
+      (this.sparkParticles.material as THREE.PointsMaterial).opacity = 0.0;
+    }
+    if (this.breakerSparkLight) {
+      this.breakerSparkLight.intensity = 0.0;
+    }
+    if (this.breakerInteractiveObj) {
+      this.breakerInteractiveObj.prompt = 'Electrical Box — View Electrical Box [E]';
+    }
+  }
+
+  public triggerLightFlicker(duration = 2.5) {
+    this.flickerTimer = duration;
+  }
+
+  public triggerStormFlash() {
+    this.stormFlashTimer = 0.35;
+    if (this.stormLight) {
+      this.stormLight.intensity = 4.5;
+    }
+  }
+
+  public updateConveyor(delta: number, isMoving: boolean) {
+    this.isConveyorMoving = isMoving;
+
+    if (this.conveyorTexture && isMoving) {
+      this.conveyorTexture.offset.y -= (0.75 / 2.5) * delta;
+    }
+
+    if (this.scannerLaserMesh && this.scannerLight) {
+      const laserMat = this.scannerLaserMesh.material as THREE.MeshBasicMaterial;
+
+      if (this.scannerPulseTimer > 0) {
+        this.scannerPulseTimer -= delta;
+        laserMat.color.setHex(0x00ff66);
+        this.scannerLight.color.setHex(0x00ff66);
+        this.scannerLight.intensity = 2.8;
+      } else {
+        laserMat.color.setHex(0xff0022);
+        this.scannerLight.color.setHex(0xff0022);
+        this.scannerLight.intensity = 1.0 + Math.sin(performance.now() * 0.008) * 0.25;
+      }
+    }
+  }
+
+  public pulseScanner() {
+    this.scannerPulseTimer = 0.22;
+  }
+
+  public update(delta: number) {
+    this.updateConveyor(delta, this.isConveyorMoving);
+
+    // Rain animation
+    if (this.rainParticles) {
+      const pos = this.rainParticles.geometry.attributes.position.array as Float32Array;
+      for (let i = 1; i < pos.length; i += 3) {
+        pos[i] -= delta * 20;
+        if (pos[i] < 0) pos[i] = 14;
+      }
+      this.rainParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Storm lightning flash
+    if (this.stormFlashTimer > 0) {
+      this.stormFlashTimer -= delta;
+      if (this.stormFlashTimer <= 0 && this.stormLight) {
+        this.stormLight.intensity = 0.0;
+      }
+    }
+
+    // Spark flicker on broken breaker
+    if (this.isBlackout) {
+      if (this.sparkParticles) {
+        (this.sparkParticles.material as THREE.PointsMaterial).opacity = Math.random() > 0.5 ? 0.95 : 0.15;
+      }
+      if (this.breakerSparkLight) {
+        this.breakerSparkLight.intensity = Math.random() > 0.45 ? 16.0 : 1.5;
+      }
+    }
+
+    // Individual light dampening / isolated flickering
+    if (!this.isBlackout && this.activeLightDampeners.length > 0) {
+      for (let i = this.activeLightDampeners.length - 1; i >= 0; i--) {
+        const d = this.activeLightDampeners[i];
+        d.remaining -= delta;
+
+        const light = this.lights[d.lightIndex];
+        if (light) {
+          if (d.remaining <= 0) {
+            light.intensity = 25.0;
+            this.activeLightDampeners.splice(i, 1);
+          } else {
+            // Modulate light intensity
+            const flickerNoise = Math.random() > 0.3 ? 1.0 : 0.2;
+            light.intensity = 25.0 * d.targetFactor * flickerNoise;
+          }
+        } else {
+          this.activeLightDampeners.splice(i, 1);
+        }
+      }
+    }
+
+    // Global light flicker
+    if (this.flickerTimer > 0) {
+      this.flickerTimer -= delta;
+      const flicker = Math.random() > 0.45 ? 1.0 : 0.08;
+      this.lights.forEach((l) => {
+        if (!this.isBlackout) {
+          l.intensity = 25.0 * flicker;
+        }
+      });
+      if (this.flickerTimer <= 0 && !this.isBlackout) {
+        this.lights.forEach((l) => (l.intensity = 25.0));
+      }
+    }
   }
 }

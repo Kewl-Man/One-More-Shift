@@ -12,6 +12,10 @@ class SoundManager {
   private isAmbientPlaying = false;
   private isMuted = false;
 
+  private conveyorOsc: OscillatorNode | null = null;
+  private conveyorGain: GainNode | null = null;
+  private isConveyorPlaying = false;
+
   private settings = {
     masterVolume: 0.8,
     sfxVolume: 0.9,
@@ -270,6 +274,22 @@ class SoundManager {
     osc.stop(t + 0.5);
   }
 
+  public playBarcodeBeep() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2400, t);
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
   // Flashlight click
   public playFlashlightClick() {
     this.init();
@@ -470,7 +490,26 @@ class SoundManager {
     });
   }
 
-  // Phone Ringing
+  // Continuous Phone Ringing Loop
+  private phoneRingInterval: number | null = null;
+
+  public startPhoneRinging() {
+    this.init();
+    if (this.phoneRingInterval) return;
+    this.playPhoneRing();
+    this.phoneRingInterval = window.setInterval(() => {
+      this.playPhoneRing();
+    }, 3800);
+  }
+
+  public stopPhoneRinging() {
+    if (this.phoneRingInterval) {
+      clearInterval(this.phoneRingInterval);
+      this.phoneRingInterval = null;
+    }
+  }
+
+  // Phone Ringing Single Burst
   public playPhoneRing() {
     this.init();
     if (!this.ctx || !this.sfxGain) return;
@@ -486,11 +525,11 @@ class SoundManager {
     osc2.frequency.setValueAtTime(480, t);
 
     // Burst pattern: 0.6s on, 0.4s off, 0.6s on
-    gain.gain.setValueAtTime(0.14, t);
-    gain.gain.setValueAtTime(0.14, t + 0.6);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.setValueAtTime(0.18, t + 0.6);
     gain.gain.setValueAtTime(0.001, t + 0.61);
-    gain.gain.setValueAtTime(0.14, t + 0.9);
-    gain.gain.setValueAtTime(0.14, t + 1.5);
+    gain.gain.setValueAtTime(0.18, t + 0.9);
+    gain.gain.setValueAtTime(0.18, t + 1.5);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
 
     osc1.connect(gain);
@@ -632,23 +671,180 @@ class SoundManager {
     osc.stop(t + 0.15);
   }
 
-  // Mop wet slosh sound
-  public playMop() {
+  // Telephone receiver unhook / pickup click and line open
+  public playPhonePickup() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // Heavy plastic mechanical release
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.exponentialRampToValueAtTime(110, t + 0.05);
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.07);
+
+    // Faint telephone line hum
+    const lineOsc = this.ctx.createOscillator();
+    const lineFilter = this.ctx.createBiquadFilter();
+    const lineGain = this.ctx.createGain();
+    lineOsc.type = 'sawtooth';
+    lineOsc.frequency.setValueAtTime(350, t + 0.04);
+    lineFilter.type = 'bandpass';
+    lineFilter.frequency.setValueAtTime(400, t + 0.04);
+    lineGain.gain.setValueAtTime(0.03, t + 0.04);
+    lineGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    lineOsc.connect(lineFilter);
+    lineFilter.connect(lineGain);
+    lineGain.connect(this.sfxGain);
+    lineOsc.start(t + 0.04);
+    lineOsc.stop(t + 0.4);
+  }
+
+  // Telephone hangup cradle slam
+  public playPhoneHangup() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(250, t);
+    osc.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+
+  // Procedural telephone voice chatter (makes speech audible as realistic filtered voice packets)
+  public playPhoneVoiceChatter(syllables = 4) {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    for (let i = 0; i < syllables; i++) {
+      const sylT = t + i * 0.09;
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+
+      // Formants in human vocal telephone spectrum (300Hz - 2200Hz)
+      const baseFreq = 160 + (i % 2 === 0 ? 30 : -20) + Math.random() * 40;
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(baseFreq, sylT);
+      osc.frequency.linearRampToValueAtTime(baseFreq * (0.95 + Math.random() * 0.1), sylT + 0.07);
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(850 + Math.random() * 400, sylT);
+      filter.Q.setValueAtTime(3.5, sylT);
+
+      gain.gain.setValueAtTime(0.07, sylT);
+      gain.gain.exponentialRampToValueAtTime(0.001, sylT + 0.08);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start(sylT);
+      osc.stop(sylT + 0.085);
+    }
+  }
+
+  // Sickening neck bone snap
+  public playNeckSnap() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    [0, 0.03, 0.07].forEach((delay, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      const snapT = t + delay;
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800 - idx * 200, snapT);
+      osc.frequency.exponentialRampToValueAtTime(140, snapT + 0.04);
+      gain.gain.setValueAtTime(0.25 - idx * 0.05, snapT);
+      gain.gain.exponentialRampToValueAtTime(0.001, snapT + 0.05);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(snapT);
+      osc.stop(snapT + 0.055);
+    });
+  }
+
+  // Distant thud from dark aisles
+  public playDistantThud() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(95, t);
+    osc.frequency.exponentialRampToValueAtTime(28, t + 0.35);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(180, t);
+
+    gain.gain.setValueAtTime(0.28, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.45);
+  }
+
+  // Static burst for CCTV / Entity interference
+  public playStaticBurst(duration = 0.25) {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.5;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    noise.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(t);
+  }
+
+  // Eerie whisper frequency
+  public playWhisper() {
     this.init();
     if (!this.ctx || !this.sfxGain) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(160, t);
-    osc.frequency.linearRampToValueAtTime(220, t + 0.08);
-    osc.frequency.linearRampToValueAtTime(80, t + 0.2);
-    gain.gain.setValueAtTime(0.15, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.frequency.setValueAtTime(260, t);
+    osc.frequency.linearRampToValueAtTime(220, t + 0.4);
+    osc.frequency.linearRampToValueAtTime(270, t + 0.8);
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
     osc.connect(gain);
     gain.connect(this.sfxGain);
     osc.start(t);
-    osc.stop(t + 0.25);
+    osc.stop(t + 0.95);
   }
 
   // Heavy metal door deadbolt latching
@@ -667,6 +863,155 @@ class SoundManager {
     gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 0.1);
+  }
+
+  // Electrical error / misconnect buzz
+  public playBuzzSound() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(130, t);
+    osc.frequency.linearRampToValueAtTime(110, t + 0.18);
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  }
+
+  // Checkout conveyor belt continuous motorized running hum
+  public startConveyorBelt() {
+    this.init();
+    if (!this.ctx || !this.sfxGain || this.isConveyorPlaying) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(84, this.ctx.currentTime);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(280, this.ctx.currentTime);
+
+      gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.065, this.ctx.currentTime + 0.12);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start();
+      this.conveyorOsc = osc;
+      this.conveyorGain = gain;
+      this.isConveyorPlaying = true;
+    } catch {
+      // AudioContext safe catch
+    }
+  }
+
+  public stopConveyorBelt() {
+    if (!this.isConveyorPlaying || !this.ctx || !this.conveyorGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      this.conveyorGain.gain.linearRampToValueAtTime(0.001, t + 0.1);
+      setTimeout(() => {
+        try {
+          this.conveyorOsc?.stop();
+          this.conveyorOsc?.disconnect();
+          this.conveyorGain?.disconnect();
+        } catch {}
+        this.conveyorOsc = null;
+        this.conveyorGain = null;
+        this.isConveyorPlaying = false;
+      }, 110);
+    } catch {
+      this.isConveyorPlaying = false;
+    }
+  }
+
+  // Checkout conveyor belt motorized single pulse hum
+  public playConveyorBeltSound() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(80, t);
+    osc.frequency.linearRampToValueAtTime(95, t + 0.25);
+    osc.frequency.linearRampToValueAtTime(70, t + 0.6);
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.7);
+  }
+
+  // Car door open / shut heavy thud
+  public playCarDoor() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110, t);
+    osc.frequency.exponentialRampToValueAtTime(35, t + 0.12);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
+  // Car turn signal indicator click
+  public playBlinkerClick() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(820, t);
+    gain.gain.setValueAtTime(0.04, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.03);
+  }
+
+  // High-voltage electrical spark burst
+  public playElectricalSparks() {
+    this.init();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    // White noise / crackle burst
+    const bufferSize = this.ctx.sampleRate * 0.12;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.4));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(1400, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(t);
   }
 }
 

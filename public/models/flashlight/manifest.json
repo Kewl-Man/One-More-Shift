@@ -1,0 +1,12 @@
+{
+  "description": "Configuration for custom flashlight 3D model and textures.",
+  "model": "Flashlight.obj",
+  "textures": {
+    "baseColor": "BaseColor.png",
+    "roughness": "Roughness.png",
+    "emissive": "Emissive.png"
+  },
+  "scaleMultiplier": 1.0,
+  "rotationOffsetDegrees": [0, 0, 0],
+  "positionOffset": [0, 0, 0]
+}

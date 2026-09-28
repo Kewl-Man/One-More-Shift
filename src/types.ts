@@ -1,4 +1,4 @@
-export type ShiftNumber = 1 | 2 | 3 | 4 | 5 | 6; // 6 is Endless/Overtime
+export type ShiftNumber = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface GameSettings {
   masterVolume: number;
@@ -10,35 +10,16 @@ export interface GameSettings {
   fullscreen: boolean;
 }
 
-export interface InventoryItem {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-}
-
 export interface StoreRule {
   id: string;
-  shift: ShiftNumber;
+  ruleNumber?: number;
+  title?: string;
   ruleText: string;
-  hint: string;
-  isRedHerring?: boolean;
-}
-
-export interface DialogueChoice {
-  text: string;
-  nextDialogueId?: string;
-  action?: () => void;
-  isCorrectRule?: boolean;
-}
-
-export interface DialogueNode {
-  id: string;
-  speaker: string;
-  text: string;
-  avatar?: string;
-  voiceType?: 'normal' | 'deep' | 'glitched' | 'whisper' | 'radio' | 'corporate';
-  choices?: DialogueChoice[];
+  warningNote?: string;
+  hint?: string;
+  minShift?: ShiftNumber;
+  shift?: number;
+  isRedacted?: boolean;
 }
 
 export interface CustomerProduct {
@@ -47,8 +28,23 @@ export interface CustomerProduct {
   price: number;
   barcode: string;
   color: string;
+  shape?: 'can' | 'box' | 'bottle' | 'pack' | 'meat' | 'curse';
   isAnomalous?: boolean;
   anomalyNote?: string;
+}
+
+export interface DialogueChoice {
+  playerText: string;
+  customerReply: string;
+  nextId?: string;
+  closesDialogue?: boolean;
+}
+
+export interface DialogueNode {
+  id: string;
+  speakerName: string;
+  text: string;
+  choices: DialogueChoice[];
 }
 
 export interface CustomerData {
@@ -62,40 +58,54 @@ export interface CustomerData {
     hasHat?: boolean;
     hasGlasses?: boolean;
     isSupernatural?: boolean;
-    distortionType?: 'none' | 'elongated' | 'inverted' | 'shadow' | 'faceless' | 'mimic';
+    distortionType?: 'none' | 'elongated' | 'inverted' | 'shadow' | 'faceless' | 'mimic' | 'twitching';
   };
   products: CustomerProduct[];
-  dialogueTree: Record<string, DialogueNode>;
-  initialDialogueId: string;
+  greeting?: string;
+  dialogueChoices?: DialogueChoice[];
   isWearingRed?: boolean;
   isNamedDavid?: boolean;
   asksIfAlone?: boolean;
-  paymentAmount: number;
-  entityType?: 'none' | 'mimic' | 'the_refund' | 'watcher' | 'aisle6_man';
+  is1998Patron?: boolean;
+  refusalReaction?: string;
+  acceptReaction?: string;
+  paymentAmount?: number;
+  entityType?: string;
+  initialDialogueId?: string;
+  dialogueTree?: any;
+}
+
+export type HorrorPhase = 'NORMAL' | 'ODD' | 'UNSETTLING' | 'DISTURBING' | 'THREATENING' | 'TERRIFYING';
+
+export interface HorrorEventDefinition {
+  id: string;
+  minMinutes: number;
+  minPhase: HorrorPhase;
+  rarity: 'common' | 'uncommon' | 'rare' | 'very_rare';
+  description: string;
+  execute: () => void;
 }
 
 export interface ActiveTask {
   id: string;
   title: string;
   description: string;
-  currentCount: number;
-  targetCount: number;
-  type: 'restock' | 'register' | 'mop' | 'trash' | 'breaker' | 'lock_door' | 'check_cctv' | 'phone';
+  type: 'register' | 'breaker' | 'lock_door' | 'check_cctv' | 'phone' | 'restock' | 'mop';
   completed: boolean;
+  currentCount?: number;
+  targetCount?: number;
   locationHint?: string;
 }
 
-export interface GameSaveData {
-  currentShift: ShiftNumber;
-  highestShiftUnlocked: ShiftNumber;
-  totalCashEarned: number;
-  shiftsCompleted: number;
-  settings: GameSettings;
-}
-
-export interface GameEvent {
-  id: string;
-  timeHour: number; // e.g. 1.5 = 1:30 AM
-  trigger: () => void;
-  executed: boolean;
-}
+export type PhoneTutorialStep =
+  | 'intro'
+  | 'idle_ring'
+  | 'greeting'
+  | 'look_at_register'
+  | 'inspect_register'
+  | 'explain_checkout'
+  | 'check_cctv'
+  | 'inspect_cctv'
+  | 'explain_cctv'
+  | 'conclusion'
+  | 'completed';

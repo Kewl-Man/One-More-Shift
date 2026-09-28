@@ -1,271 +1,128 @@
 import React, { useState, useEffect } from 'react';
+import { CCTVCameraDef } from '../game/StoreWorld';
 import { sound } from '../audio/SoundManager';
-import { Camera, Radio, Eye, AlertOctagon, X, RefreshCw } from 'lucide-react';
+import { Video, Shield, AlertTriangle, Monitor, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface CCTVMonitorProps {
+  cctvDefs: CCTVCameraDef[];
+  activeCamIndex: number;
+  onSelectCam: (index: number) => void;
   onClose: () => void;
-  watcherLocation: 'none' | 'parking' | 'aisle6' | 'backroom' | 'window';
-  aisle6Active: boolean;
-  onWatcherSpotted?: () => void;
+  isGlitching: boolean;
+  gameMinutes: number;
 }
-
-interface CameraChannel {
-  id: number;
-  name: string;
-  code: string;
-  locationKey: 'register' | 'aisle1' | 'aisle6' | 'backroom' | 'parking' | 'coolers';
-}
-
-const CAMERAS: CameraChannel[] = [
-  { id: 1, name: 'CAM 01 — FRONT CHECKOUT', code: 'CAM-01', locationKey: 'register' },
-  { id: 2, name: 'CAM 02 — AISLE 1 & 2 (SNACKS)', code: 'CAM-02', locationKey: 'aisle1' },
-  { id: 3, name: 'CAM 03 — AISLE 6 (BLIND SPOT)', code: 'CAM-03', locationKey: 'aisle6' },
-  { id: 4, name: 'CAM 04 — STORAGE & BREAKERS', code: 'CAM-04', locationKey: 'backroom' },
-  { id: 5, name: 'CAM 05 — PARKING LOT & GLASS', code: 'CAM-05', locationKey: 'parking' },
-  { id: 6, name: 'CAM 06 — DRINK COOLERS', code: 'CAM-06', locationKey: 'coolers' },
-];
 
 export const CCTVMonitor: React.FC<CCTVMonitorProps> = ({
+  cctvDefs,
+  activeCamIndex,
+  onSelectCam,
   onClose,
-  watcherLocation,
-  aisle6Active,
-  onWatcherSpotted,
+  isGlitching,
+  gameMinutes,
 }) => {
-  const [currentCam, setCurrentCam] = useState<number>(1);
-  const [isStaticGlitch, setIsStaticGlitch] = useState<boolean>(false);
-  const [isNightVision, setIsNightVision] = useState<boolean>(false);
-  const [timestamp, setTimestamp] = useState<string>('');
+  const currentCam = cctvDefs[activeCamIndex] || cctvDefs[0];
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      setTimestamp(`1998-11-14 ${timeStr} EST`);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Calculate 1998 analog timestamp
+  const hour = Math.floor(gameMinutes / 60);
+  const min = Math.floor(gameMinutes % 60);
+  const sec = Math.floor((gameMinutes * 60) % 60);
+  const timeString = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')} AM`;
 
-  const handleSwitchCam = (camId: number) => {
-    if (camId === currentCam) return;
+  const handlePrev = () => {
     sound.playCctvSwitch();
-    setIsStaticGlitch(true);
-    setCurrentCam(camId);
-    setTimeout(() => {
-      setIsStaticGlitch(false);
-    }, 180);
+    const nextIdx = (activeCamIndex - 1 + cctvDefs.length) % cctvDefs.length;
+    onSelectCam(nextIdx);
   };
 
-  const activeChannel = CAMERAS.find((c) => c.id === currentCam)!;
+  const handleNext = () => {
+    sound.playCctvSwitch();
+    const nextIdx = (activeCamIndex + 1) % cctvDefs.length;
+    onSelectCam(nextIdx);
+  };
 
-  // Check if an anomaly is visible on current feed
-  const hasWatcherHere =
-    (activeChannel.locationKey === 'parking' && (watcherLocation === 'parking' || watcherLocation === 'window')) ||
-    (activeChannel.locationKey === 'aisle6' && watcherLocation === 'aisle6') ||
-    (activeChannel.locationKey === 'backroom' && watcherLocation === 'backroom');
-
-  const hasAisle6ManHere = activeChannel.locationKey === 'aisle6' && aisle6Active;
-
-  useEffect(() => {
-    if (hasWatcherHere && onWatcherSpotted) {
-      onWatcherSpotted();
-    }
-  }, [hasWatcherHere, onWatcherSpotted]);
+  const handleSelect = (idx: number) => {
+    sound.playCctvSwitch();
+    onSelectCam(idx);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-3 select-none font-mono">
-      <div className="w-full max-w-4xl bg-neutral-950 border-4 border-neutral-800 rounded-xl shadow-2xl overflow-hidden flex flex-col relative">
-        {/* CRT Bezel Frame Header */}
-        <div className="bg-neutral-900 border-b border-neutral-800 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-neutral-300">
-            <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold tracking-widest text-emerald-400">SURVEILLANCE TERMINAL — K&M MART SEC-SYS 4.2</span>
+    <div className="fixed inset-0 z-40 pointer-events-none flex flex-col justify-between p-6">
+      {/* 1. CRT SCANLINES & VIGNETTE OVERLAY (Applied across viewport) */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-60" />
+      <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.85)] pointer-events-none" />
+
+      {/* Dynamic Horror Static Glitch Overlay */}
+      {isGlitching && (
+        <div className="absolute inset-0 bg-white/10 mix-blend-difference pointer-events-none animate-pulse">
+          <div className="w-full h-8 bg-black/40 my-12 blur-xs animate-bounce" />
+          <div className="w-full h-14 bg-black/50 my-24 blur-xs" />
+        </div>
+      )}
+
+      {/* 2. TOP OSD BAR */}
+      <div className="relative z-10 flex items-center justify-between text-neutral-200 font-mono pointer-events-auto bg-neutral-950/70 p-3 rounded-lg border border-neutral-800/80 backdrop-blur-sm">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse" />
+            <span className="text-xs font-bold tracking-widest text-red-400">REC</span>
           </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsNightVision(!isNightVision)}
-              className={`px-2.5 py-1 text-xs rounded border transition-colors ${
-                isNightVision
-                  ? 'bg-emerald-800 border-emerald-500 text-emerald-100'
-                  : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              IR Mode {isNightVision ? '[ON]' : '[OFF]'}
-            </button>
-            <button
-              onClick={onClose}
-              className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-xs rounded flex items-center gap-1 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-              Exit Monitor [ESC]
-            </button>
-          </div>
+          <span className="text-neutral-500">|</span>
+          <span className="text-xs tracking-wider text-emerald-400 font-bold">
+            {currentCam.name} // {currentCam.locationName}
+          </span>
         </div>
 
-        {/* CRT Screen Display */}
-        <div
-          className={`relative w-full h-[460px] bg-neutral-900 overflow-hidden flex items-center justify-center ${
-            isNightVision ? 'filter brightness-110 contrast-125 saturate-150 hue-rotate-60' : ''
-          }`}
-        >
-          {/* Scanlines and screen curvature overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none z-20 opacity-30"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.6) 0px, rgba(0,0,0,0.6) 1px, transparent 1px, transparent 2px)',
-            }}
-          />
-
-          {/* CRT Flicker Vignette */}
-          <div className="absolute inset-0 pointer-events-none z-20 shadow-[inset_0_0_100px_rgba(0,0,0,0.85)]" />
-
-          {/* Static Switch Noise */}
-          {isStaticGlitch && (
-            <div className="absolute inset-0 bg-white/20 z-30 flex items-center justify-center backdrop-invert animate-pulse">
-              <div className="text-white text-xl font-bold tracking-widest">FEED RE-SYNCING...</div>
-            </div>
-          )}
-
-          {/* Camera Visual Scene Simulation */}
-          <div className="absolute inset-0 bg-gradient-to-b from-neutral-950 via-neutral-900 to-black flex items-center justify-center">
-            {/* Background perspective of current feed */}
-            {activeChannel.locationKey === 'register' && (
-              <div className="w-full h-full relative flex items-center justify-center opacity-80">
-                <div className="w-64 h-32 border border-neutral-700 bg-neutral-950/60 rounded flex items-center justify-center text-xs text-neutral-500">
-                  [ CHECKOUT COUNTER & EMPTY BELT ]
-                </div>
-              </div>
-            )}
-
-            {activeChannel.locationKey === 'aisle1' && (
-              <div className="w-full h-full relative flex items-center justify-center opacity-80">
-                <div className="w-80 h-64 border-x-2 border-neutral-700 flex justify-between p-4 text-xs text-neutral-600">
-                  <div>[ SHELF: CHIPS ]</div>
-                  <div>[ SHELF: CANDY ]</div>
-                </div>
-              </div>
-            )}
-
-            {activeChannel.locationKey === 'aisle6' && (
-              <div className="w-full h-full relative flex items-center justify-center">
-                <div className="w-80 h-72 border-x-2 border-neutral-800 flex flex-col justify-end items-center pb-8">
-                  {hasAisle6ManHere && (
-                    <div className="flex flex-col items-center animate-pulse">
-                      <div className="w-8 h-8 rounded-full bg-neutral-600 mb-1" />
-                      <div className="w-14 h-24 bg-neutral-800 rounded" />
-                      <div className="text-[10px] text-red-400 font-bold mt-2">
-                        [ SUBJECT DETECTED: FACING WALL - DO NOT APPROACH ]
-                      </div>
-                    </div>
-                  )}
-                  {hasWatcherHere && !hasAisle6ManHere && (
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-black border border-white/40 mb-1" />
-                      <div className="w-10 h-32 bg-black rounded" />
-                      <div className="text-[10px] text-red-500 font-bold mt-2 animate-pulse">
-                        [ ENTITY DETECTED: THE WATCHER ]
-                      </div>
-                    </div>
-                  )}
-                  {!hasAisle6ManHere && !hasWatcherHere && (
-                    <div className="text-xs text-neutral-600 italic">[ AISLE 6 EMPTY — DIM ILLUMINATION ]</div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeChannel.locationKey === 'backroom' && (
-              <div className="w-full h-full relative flex items-center justify-center">
-                <div className="w-72 h-48 border border-neutral-800 p-4 flex flex-col justify-between text-xs text-neutral-500">
-                  <div className="flex justify-between">
-                    <span>[ ELECTRICAL BREAKER PANEL ]</span>
-                    <span>[ RED PHONE DESK ]</span>
-                  </div>
-                  {hasWatcherHere && (
-                    <div className="self-center flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-black mb-1" />
-                      <div className="w-12 h-28 bg-black rounded" />
-                      <div className="text-[10px] text-red-500 font-bold mt-1 animate-pulse">
-                        [ UNKNOWN PRESENCE IN STORAGE ]
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeChannel.locationKey === 'parking' && (
-              <div className="w-full h-full relative flex items-center justify-center">
-                <div className="w-full h-full flex flex-col items-center justify-center text-xs text-neutral-500 relative">
-                  <div className="text-center mb-4">[ PARKING LOT — RAIN FALLING ]</div>
-                  {hasWatcherHere && (
-                    <div className="flex flex-col items-center animate-pulse">
-                      <div className="w-8 h-8 rounded-full bg-black shadow-[0_0_10px_rgba(255,255,255,0.4)] mb-1" />
-                      <div className="w-14 h-36 bg-black" />
-                      <div className="text-[11px] text-red-500 font-bold mt-3 uppercase tracking-wider bg-black/80 px-2 py-1 border border-red-800">
-                        WARNING: ENTITY STARING INTO LENS
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeChannel.locationKey === 'coolers' && (
-              <div className="w-full h-full relative flex items-center justify-center opacity-80">
-                <div className="w-80 h-48 border border-cyan-900/60 flex items-center justify-center text-xs text-cyan-500">
-                  [ 5 REFRIGERATED GLASS DOORS — CONDENSATION DETECTED ]
-                </div>
-              </div>
-            )}
+        <div className="flex items-center space-x-4">
+          <div className="text-xs text-neutral-400 tracking-widest">
+            NOV-14-1998 • {timeString}
           </div>
-
-          {/* OSD (On-Screen Display) */}
-          <div className="absolute top-4 left-4 z-20 flex items-center space-x-2 text-emerald-400 text-xs font-bold tracking-wider">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
-            <span className="text-red-500">● REC</span>
-            <span className="text-neutral-400">|</span>
-            <span>{activeChannel.code}</span>
-            <span className="text-neutral-400">|</span>
-            <span className="text-emerald-300">{activeChannel.name}</span>
-          </div>
-
-          <div className="absolute top-4 right-4 z-20 text-emerald-400 text-xs tracking-wider">
-            {timestamp}
-          </div>
-
-          <div className="absolute bottom-4 left-4 z-20 text-xs text-neutral-400 flex items-center gap-2">
-            <AlertOctagon className="w-3.5 h-3.5 text-amber-500" />
-            <span>INTERFERENCE: NORMAL</span>
-          </div>
+          <button
+            onClick={onClose}
+            className="flex items-center space-x-1 px-3 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs rounded border border-neutral-600 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Exit CCTV [ESC]</span>
+          </button>
         </div>
+      </div>
 
-        {/* Camera Selector Buttons */}
-        <div className="bg-neutral-900 border-t border-neutral-800 p-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {CAMERAS.map((cam) => (
-              <button
-                key={cam.id}
-                onClick={() => handleSwitchCam(cam.id)}
-                className={`px-3 py-1.5 rounded text-xs font-bold tracking-wider transition-all flex items-center gap-1.5 ${
-                  currentCam === cam.id
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/50'
-                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
-                }`}
-              >
-                <Camera className="w-3.5 h-3.5" />
-                CAM {cam.id}
-              </button>
-            ))}
+      {/* 3. BOTTOM CAMERA SELECTOR CONTROLS */}
+      <div className="relative z-10 flex items-center justify-center space-x-3 pointer-events-auto">
+        <div className="bg-neutral-950/90 border border-neutral-800 p-2.5 rounded-xl shadow-2xl backdrop-blur-md flex items-center space-x-2 font-mono">
+          <button
+            onClick={handlePrev}
+            className="p-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded text-neutral-300 transition-colors"
+            title="Previous Camera"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center space-x-1.5 px-2">
+            {cctvDefs.map((cam, idx) => {
+              const isActive = idx === activeCamIndex;
+              return (
+                <button
+                  key={cam.id}
+                  onClick={() => handleSelect(idx)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded transition-all flex items-center space-x-1.5 ${
+                    isActive
+                      ? 'bg-emerald-950/80 border-2 border-emerald-500 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                      : 'bg-neutral-900/90 border border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-500'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>{cam.name}</span>
+                </button>
+              );
+            })}
           </div>
 
           <button
-            onClick={() => handleSwitchCam(currentCam)}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs rounded border border-neutral-700 flex items-center gap-1.5 transition-colors"
+            onClick={handleNext}
+            className="p-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded text-neutral-300 transition-colors"
+            title="Next Camera"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Re-Sync Feed
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

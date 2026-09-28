@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import dotenv from "dotenv";
@@ -25,7 +26,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "64mb" }));
 
   // API: Health check
   app.get("/api/health", (_req, res) => {
@@ -83,6 +84,136 @@ Your personality:
 
     const fallback = defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
     res.json({ reply: fallback, source: "fallback" });
+  });
+
+  // API: Custom Flashlight 3D model & textures scanner
+  app.get("/api/flashlight-assets", (_req, res) => {
+    try {
+      const candidates = [
+        path.join(process.cwd(), "public", "models", "flashlight"),
+        path.join(process.cwd(), "public", "flashlight"),
+        path.join(process.cwd(), "public", "assets", "flashlight"),
+      ];
+
+      let targetDir = candidates[0];
+      let files: string[] = [];
+
+      for (const dir of candidates) {
+        if (fs.existsSync(dir)) {
+          const list = fs.readdirSync(dir);
+          const hasModel = list.some((f) => /\.(glb|gltf|obj|fbx)$/i.test(f));
+          if (hasModel || list.length > 0) {
+            targetDir = dir;
+            files = list;
+            break;
+          }
+        }
+      }
+
+      if (!files.length && fs.existsSync(targetDir)) {
+        files = fs.readdirSync(targetDir);
+      }
+
+      // Base public URL path
+      const relDir = path.relative(path.join(process.cwd(), "public"), targetDir).replace(/\\/g, "/");
+      const baseUrl = `/${relDir}`.replace(/\/+/g, "/");
+
+      // Find model file
+      const modelExts = [".glb", ".gltf", ".obj", ".fbx"];
+      let foundModel: string | null = null;
+      let modelFormat: string | null = null;
+
+      // Prefer GLB / GLTF first, then OBJ, then FBX
+      for (const ext of modelExts) {
+        const match = files.find((f) => f.toLowerCase().endsWith(ext) && !f.startsWith("."));
+        if (match) {
+          foundModel = `${baseUrl}/${match}`;
+          modelFormat = ext.replace(".", "").toLowerCase();
+          break;
+        }
+      }
+
+      // Find textures (roughness, normal, baseColor/albedo, metallic, ao)
+      const textures: Record<string, string> = {};
+      const imgExts = /\.(png|jpe?g|webp|bmp|tga)$/i;
+
+      for (const f of files) {
+        if (!imgExts.test(f)) continue;
+        const filePath = path.join(targetDir, f);
+        try {
+          const stat = fs.statSync(filePath);
+          if (stat.size < 10) continue; // Skip empty/stub texture files
+        } catch {
+          continue;
+        }
+
+        const lower = f.toLowerCase();
+        const url = `${baseUrl}/${f}`;
+
+        if (/rough(ness)?/i.test(lower) && !textures.roughness) {
+          textures.roughness = url;
+        } else if (/norm(al)?/i.test(lower) && !textures.normal) {
+          textures.normal = url;
+        } else if (/(base_?color|albedo|diffuse|color)/i.test(lower) && !textures.baseColor) {
+          textures.baseColor = url;
+        } else if (/(metal(lic|ness)?)/i.test(lower) && !textures.metallic) {
+          textures.metallic = url;
+        } else if (/(ao|ambient_?occlusion|occlusion)/i.test(lower) && !textures.ao) {
+          textures.ao = url;
+        } else if (/emiss(ive)?/i.test(lower) && !textures.emissive) {
+          textures.emissive = url;
+        }
+      }
+
+      // Check if manifest.json exists
+      let manifest: any = null;
+      const manifestPath = path.join(targetDir, "manifest.json");
+      if (fs.existsSync(manifestPath)) {
+        try {
+          manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        } catch {}
+      }
+
+      res.json({
+        hasCustomModel: Boolean(foundModel),
+        targetDir: relDir,
+        modelUrl: foundModel,
+        modelFormat,
+        textures,
+        allFiles: files,
+        manifest,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Upload custom flashlight model and textures directly from browser
+  app.post("/api/flashlight-assets/upload", (req, res) => {
+    try {
+      const { files } = req.body;
+      if (!Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ error: "No files provided" });
+      }
+
+      const uploadDir = path.join(process.cwd(), "public", "models", "flashlight");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const saved: string[] = [];
+      for (const item of files) {
+        if (!item.name || !item.base64) continue;
+        const safeName = path.basename(item.name);
+        const buffer = Buffer.from(item.base64, "base64");
+        fs.writeFileSync(path.join(uploadDir, safeName), buffer);
+        saved.push(safeName);
+      }
+
+      res.json({ success: true, saved, folder: "/models/flashlight/" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Vite middleware in dev or static files in production

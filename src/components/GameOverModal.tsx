@@ -4,20 +4,30 @@ import { sound } from '../audio/SoundManager';
 import { Skull, RotateCcw, Home } from 'lucide-react';
 
 interface GameOverModalProps {
-  shiftNumber: ShiftNumber;
-  causeOfDeath: string;
+  shiftNumber?: ShiftNumber | number;
+  causeOfDeath?: string;
+  cause?: string;
   ruleViolated?: string;
-  onRetry: () => void;
+  ruleBroken?: string;
+  onRetry?: () => void;
+  onRestart?: () => void;
   onMainMenu: () => void;
 }
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
-  shiftNumber,
+  shiftNumber = 1,
   causeOfDeath,
+  cause,
   ruleViolated,
+  ruleBroken,
   onRetry,
+  onRestart,
   onMainMenu,
 }) => {
+  const finalCause = cause || causeOfDeath || 'You failed to survive your shift.';
+  const finalRule = ruleBroken || ruleViolated;
+  const handleRestart = onRestart || onRetry || onMainMenu;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 select-none font-mono text-neutral-200">
       <div className="w-full max-w-md bg-neutral-950 border-2 border-red-900/80 rounded-xl shadow-[0_0_50px_rgba(220,38,38,0.3)] p-6 text-center space-y-4">
@@ -32,38 +42,36 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <h2 className="text-xl font-extrabold text-neutral-100 mt-2 tracking-wider">
             YOUR SHIFT HAS ENDED
           </h2>
-          <p className="text-xs text-red-400 font-sans mt-1">{causeOfDeath}</p>
+          <p className="text-xs text-red-400 font-sans mt-1">{finalCause}</p>
         </div>
 
-        {ruleViolated && (
+        {finalRule && (
           <div className="bg-red-950/20 border border-red-900/50 rounded-lg p-3 text-left">
             <div className="text-[11px] text-red-400 font-bold mb-1">RULE NEGLECTED:</div>
-            <p className="text-xs text-neutral-300 font-sans italic">"{ruleViolated}"</p>
+            <div className="text-xs text-neutral-300 font-serif italic">"{finalRule}"</div>
           </div>
         )}
 
-        <div className="text-[11px] text-neutral-500 font-sans italic">
-          "The company regrets to inform your emergency contact that your uniform was recovered undamaged."
-        </div>
-
-        <div className="space-y-2 pt-2">
+        <div className="pt-2 flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => {
               sound.playUiClick();
-              onRetry();
+              handleRestart();
             }}
-            className="w-full py-3 px-4 bg-red-700 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg flex items-center justify-center gap-2 transition-colors"
+            className="flex-1 py-2.5 px-4 bg-red-700 hover:bg-red-600 text-white font-bold text-xs rounded-lg uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Retry Shift {shiftNumber}</span>
+            Restart Night
           </button>
-
           <button
-            onClick={onMainMenu}
-            className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded text-xs text-neutral-400 flex items-center justify-center gap-2 transition-colors"
+            onClick={() => {
+              sound.playUiClick();
+              onMainMenu();
+            }}
+            className="flex-1 py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <Home className="w-4 h-4" />
-            <span>Return to Main Menu</span>
+            Main Menu
           </button>
         </div>
       </div>
